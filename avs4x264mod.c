@@ -41,8 +41,9 @@
 
 // Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 5
+#define VERSION_MAJOR  0
+#define VERSION_MINOR  5
+#define VERSION_BUGFIX 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -368,7 +369,12 @@ int main(int argc, char *argv[])
                      vi->width, vi->height );
             goto avs_fail;
         }
-        if ( avs_is_yv24( vi ) )
+        if ( avs_is_yv12( vi ) )
+        {
+            chroma_width = vi->width >> 1;
+            chroma_height = vi->height >> 1;
+        }
+        else if ( avs_is_yv24( vi ) )
         {
             csp = "i444";
             chroma_width = vi->width;
@@ -380,7 +386,7 @@ int main(int argc, char *argv[])
             chroma_width = vi->width >> 1;
             chroma_height = vi->height;
         }
-        else if( !avs_is_yv12( vi ) )
+        else
         {
             avs_h.func.avs_release_clip( avs_h.clip );
             fprintf( stderr, "avs %s\n", "[warning]: converting input clip to YV12" );
@@ -514,7 +520,7 @@ int main(int argc, char *argv[])
     else
     {
         printf("avs4x264mod - simple Avisynth pipe tool for x264\n"
-               "Version: %d.%d\n\n"                                                           , VERSION_MAJOR, VERSION_MINOR);
+               "Version: %d.%d.%d\n\n"                                                        , VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX);
         printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
         printf("Options:\n");
         printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
