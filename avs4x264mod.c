@@ -11,25 +11,31 @@
 // of Avisynth with the 64-bit version of x264 under Windows.
 // The x264 executable needs to be named x264_64.exe and placed in the
 // same folder as this program. Otherwise use --x264-binary "x264_path"
-// to define the pach of x264 binary.
+// or -L "x264_path" to define the pach of x264 binary.
 // Example:
-// avs4x264.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
+// avs4x264mod.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
 
+// avs4x264mod v0.3
 // Modified by 06_taro ( astrataro@gmail.com ).
 // Modifications: 
-// -- When x264's parameter "input-depth" set and is not equal to 8, 
-//    divide "width" by 2. This make faked 16-bit avs output, i.e.,
+// -- When x264's parameter "input-depth" is set and is not equal to 8, 
+//    divide "width" by 2. This makes faked 16-bit avs output, i.e.,
 //    MSB and LSB field interleaved clip, be treated correctly by x264.
-//    If "input-depth" not defined or equals to 8, avs4x264mod acts in
-//    the same way as original avs4x264.
-// -- Print full command-line piped in to x264_64.exe to screen,
+//    If "input-depth" is not defined or equals to 8, avs4x264mod acts
+//    in the same way as original avs4x264.
+//    Example:
+//    avs4x264mod.exe --input-depth 16 "C:\x264.exe" -out o.264 in.avs
+// -- Print full command-line piped out to x264_64.exe to screen,
 //    prefixed by "avs4x264 [info]:".
 // -- Make x264_64.exe path changeable. The path of x264 binary can be
-//    set by --x264-binary "x264_path"
+//    set by --x264-binary "x264_path" or -L "x264_path".
+//    Use "x264_64" by default if
+//    --x264-binary is not set.
 //    Example:
-//    avs4x264.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
+//    avs4x264mod.exe --x264-binary "C:\x264.exe" -o out.264 in.avs
+//    avs4x264mod.exe -L "C:\x264.exe" -o out.264 in.avs
 
-//Compiling: gcc avs4x264mod.c -s -O2 -oavs4x264mod
+//Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,7 +143,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     cmd = malloc(8192);
     for (i=1;i<argc;i++)
     {
-        if( !strcmp(argv[i], "--x264-binary") )
+        if( !strcmp(argv[i], "--x264-binary") || !strcmp(argv[i], "-L") )
         {
             x264_binary = argv[i+1];
             for (;i<argc-2;i++)
