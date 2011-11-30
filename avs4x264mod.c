@@ -15,7 +15,7 @@
 // Example:
 // avs4x264mod.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
 
-// avs4x264mod v0.5:
+// avs4x264mod v0.6:
 // Modified by 06_taro ( astrataro@gmail.com ).
 // Modifications: 
 // -- When x264's parameter "input-depth" is set and is not equal to 8, 
@@ -38,12 +38,14 @@
 // -- Improve capability with more styles of parameters in x264.
 //    E.g., --tcfile-in="timecode.txt", --input-depth=16,
 //          --x264-binary="x264", -L=x264 and -Lx264.
+// -- Do not add --input-res/--fps/--frames if already defined.
+// -- Correct number of frames to be handled when --frames is defined.
 
 // Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  5
-#define VERSION_BUGFIX 1
+#define VERSION_MINOR  6
+#define VERSION_BUGFIX 0
 
 #include <stdio.h>
 #include <stdlib.h>
