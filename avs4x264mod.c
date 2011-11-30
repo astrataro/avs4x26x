@@ -291,7 +291,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
         sprintf(buf, " --input-res %dx%d", i_width, i_height);
         strcat(cmd, buf);
     }
-    if ( csp && b_add_csp )
+    if ( b_add_csp )
     {
         sprintf(buf, " --input-csp %s", csp);
         strcat(cmd, buf);
@@ -405,6 +405,7 @@ int main(int argc, char *argv[])
         }
         if ( avs_is_yv12( vi ) )
         {
+            csp = "i420";
             chroma_width = vi->width >> 1;
             chroma_height = vi->height >> 1;
         }
@@ -435,6 +436,7 @@ int main(int argc, char *argv[])
             avs_h.clip = avs_h.func.avs_take_clip( res2, avs_h.env );
             avs_h.func.avs_release_value( res2 );
             vi = avs_h.func.avs_get_video_info( avs_h.clip );
+            csp = "i420";
             chroma_width = vi->width >> 1;
             chroma_height = vi->height >> 1;
         }
