@@ -133,7 +133,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
 {
     int i;
     char *cmd, *buf;
-    int b_tc = 0;
+    int b_write_fps = 1;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
     x264_binary = DEFAULT_BINARY_PATH;
@@ -189,9 +189,9 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     }
     for (i=1;i<argc;i++)
     {
-        if( !strncmp(argv[i], "--tcfile-in", 11) )
+        if( !strncmp(argv[i], "--tcfile-in", 11) || !strncmp(argv[i], "--fps", 5) )
         {
-            b_tc = 1;
+            b_write_fps = 0;
             break;
         }
     }
@@ -214,7 +214,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             }
         }
     }
-    if( b_tc )
+    if( !b_write_fps )
     {
         sprintf(cmd, "%s%s\" --frames %d ", buf, x264_binary, i_frame_total);
     }
