@@ -10,7 +10,10 @@
 // You can use this software to encode videos using the 32-bit version
 // of Avisynth with the 64-bit version of x264 under Windows.
 // The x264 executable needs to be named x264_64.exe and placed in the
-// same folder as this program.
+// same folder as this program. Otherwise use --x264-binary "x264_path"
+// to define the pach of x264 binary.
+// Example:
+// avs4x264.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
 
 // Modified by 06_taro ( astrataro@gmail.com ).
 // Modifications: 
@@ -21,8 +24,12 @@
 //    the same way as original avs4x264.
 // -- Print full command-line piped in to x264_64.exe to screen,
 //    prefixed by "avs4x264 [info]:".
+// -- Make x264_64.exe path changeable. The path of x264 binary can be
+//    set by --x264-binary "x264_path"
+//    Example:
+//    avs4x264.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
 
-//Compiling: gcc avs4x264.c -s -O2 -oavs4x264
+//Compiling: gcc avs4x264mod.c -s -O2 -oavs4x264mod
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +46,6 @@
 
 #include "avisynth_c.h"
 
-#define X264_EXECUTABLE_NAME "x264_64"
 #define PIPE_BUFFER_SIZE (DWORD)0//1048576 // values bigger than 250000 break the application
 
 /* AVS uses a versioned interface to control backwards compatibility */
@@ -113,6 +119,8 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     char *cmd, *buf;
     int b_tc = 0;
     int len = (unsigned int)strrchr(argv[0], '\\');
+    char *x264_binary;
+    x264_binary = "x264_64.exe";
     if (len)
     {
         len -=(unsigned int)argv[0];
@@ -129,13 +137,12 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     cmd = malloc(8192);
     for (i=1;i<argc;i++)
     {
-        if( !strcmp(argv[i], "--input-depth") )
+        if( !strcmp(argv[i], "--x264-binary") )
         {
-            if( strcmp(argv[++i], "8") )
-            {
-                i_width /= 2;
-                break;
-            }
+            argv[i] = "";
+            x264_binary = argv[++i];
+            argv[i] = "";
+            break;
         }
     }
     for (i=1;i<argc;i++)
@@ -146,13 +153,24 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             break;
         }
     }
+    for (i=1;i<argc;i++)
+    {
+        if( !strcmp(argv[i], "--input-depth") )
+        {
+            if( strcmp(argv[++i], "8") )
+            {
+                i_width /= 2;
+                break;
+            }
+        }
+    }
     if( b_tc )
     {
-        sprintf(cmd, "\"%s" X264_EXECUTABLE_NAME "\" --frames %d ", buf, i_frame_total);
+        sprintf(cmd, "\"%s%s\" --frames %d ", buf, x264_binary, i_frame_total);
     }
     else
     {
-        sprintf(cmd, "\"%s" X264_EXECUTABLE_NAME "\" --frames %d --fps %d/%d ", buf, i_frame_total, i_fps_num, i_fps_den);
+        sprintf(cmd, "\"%s%s\" --frames %d --fps %d/%d ", buf, x264_binary, i_frame_total, i_fps_num, i_fps_den);
     }
     for (i=1;i<argc;i++)
     {
