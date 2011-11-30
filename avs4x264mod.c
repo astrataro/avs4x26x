@@ -19,6 +19,8 @@
 //    MSB and LSB field interleaved clip, be treated correctly by x264.
 //    If "input-depth" not defined or equals to 8, avs4x264mod acts in
 //    the same way as original avs4x264.
+// -- Print full command-line piped in to x264_64.exe to screen,
+//    prefixed by "avs4x264 [info]:".
 
 //Compiling: gcc avs4x264.c -s -O2 -oavs4x264
 
@@ -340,6 +342,7 @@ int main(int argc, char *argv[])
         si_info.hStdError = h_stdErr;
 
         cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile );
+        printf("avs4x264 [info]: %s\n", cmd);
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
         {
