@@ -496,6 +496,30 @@ int main(int argc, char *argv[])
         CloseHandle(h_pipeRead);
         free(cmd);
 
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--frames", 8) )
+            {
+                if( !strcmp(argv[i], "--frames") )
+                {
+                    i_frame_total = atoi(argv[i+1]);
+                    break;
+                }
+                else
+                {
+                    i_frame_total = atoi(argv[i]+9);
+                    break;
+                }
+            }
+        }
+        if( vi->num_frames < i_frame_total )
+        {
+            fprintf( stderr, "avs4x264 [warning]: x264 is trying to encode %d %s, but input clip has only %d %s\n",
+                     i_frame_total,  i_frame_total  > 1 ? "frames" : "frame",
+                     vi->num_frames, vi->num_frames > 1 ? "frames" : "frame" );
+            i_frame_total = vi->num_frames;
+        }
+
         //write
         for (frame=0; frame<i_frame_total; frame++)
         {
