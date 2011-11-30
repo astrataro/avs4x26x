@@ -135,6 +135,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     char *cmd, *buf;
     int b_write_fps = 1;
     int b_write_csp = 1;
+    int b_write_res = 1;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
     x264_binary = DEFAULT_BINARY_PATH;
@@ -206,6 +207,14 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     }
     for (i=1;i<argc;i++)
     {
+        if( !strncmp(argv[i], "--input-res", 11) )
+        {
+            b_write_res = 0;
+            break;
+        }
+    }
+    for (i=1;i<argc;i++)
+    {
         if( !strncmp(argv[i], "--input-depth", 13) )
         {
             if( strcmp(argv[i], "--input-depth=8") )
@@ -264,8 +273,11 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             }
         }
     }
-    sprintf(buf, "- --input-res %dx%d", i_width, i_height);
-    strcat(cmd, buf);
+    if ( b_write_res )
+    {
+        sprintf(buf, "- --input-res %dx%d", i_width, i_height);
+        strcat(cmd, buf);
+    }
     if ( csp && b_write_csp )
     {
         sprintf(buf, " --input-csp %s", csp);
