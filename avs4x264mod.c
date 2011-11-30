@@ -120,7 +120,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     int b_tc = 0;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
-    x264_binary = "x264_64.exe";
+    x264_binary = "x264_64";
     if (len)
     {
         len -=(unsigned int)argv[0];
