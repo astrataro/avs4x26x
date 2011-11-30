@@ -136,6 +136,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     int b_write_fps = 1;
     int b_write_csp = 1;
     int b_write_res = 1;
+    int b_add_frames = 1;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
     x264_binary = DEFAULT_BINARY_PATH;
@@ -191,6 +192,14 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     }
     for (i=1;i<argc;i++)
     {
+        if( !strncmp(argv[i], "--frames", 8) )
+        {
+            b_add_frames = 0;
+            break;
+        }
+    }
+    for (i=1;i<argc;i++)
+    {
         if( !strncmp(argv[i], "--tcfile-in", 11) || !strncmp(argv[i], "--fps", 5) )
         {
             b_write_fps = 0;
@@ -232,14 +241,8 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             }
         }
     }
-    if( !b_write_fps )
-    {
-        sprintf(cmd, "%s%s\" --frames %d ", buf, x264_binary, i_frame_total);
-    }
-    else
-    {
-        sprintf(cmd, "%s%s\" --frames %d --fps %d/%d ", buf, x264_binary, i_frame_total, i_fps_num, i_fps_den);
-    }
+
+    sprintf(cmd, "%s%s\" - ", buf, x264_binary);
 
     /* skip invalid path name when both avs4x264mod and x264 binary is given by full path */
     int p_cmd = (int)cmd;
@@ -273,9 +276,19 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             }
         }
     }
+    if ( b_add_frames )
+    {
+        sprintf(buf, " --frames %d", i_frame_total);
+        strcat(cmd, buf);
+    }
+    if ( b_write_fps )
+    {
+        sprintf(buf, " --fps %d/%d", i_fps_num, i_fps_den);
+        strcat(cmd, buf);
+    }
     if ( b_write_res )
     {
-        sprintf(buf, "- --input-res %dx%d", i_width, i_height);
+        sprintf(buf, " --input-res %dx%d", i_width, i_height);
         strcat(cmd, buf);
     }
     if ( csp && b_write_csp )
