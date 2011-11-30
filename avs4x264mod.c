@@ -34,7 +34,6 @@
 //    Example:
 //    avs4x264mod.exe --x264-binary "C:\x264.exe" -o out.264 in.avs
 //    avs4x264mod.exe -L "C:\x264.exe" -o out.264 in.avs
-// -- Directly output i422/i444 with AviSynth 2.6 csp YV16/YV24
 
 //Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
@@ -125,7 +124,7 @@ fail:
     return -1;
 }
 
-char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp )
+char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile )
 {
     int i;
     char *cmd, *buf;
@@ -222,11 +221,6 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     }
     sprintf(buf, "- --input-res %dx%d", i_width, i_height);
     strcat(cmd, buf);
-    if (csp)
-    {
-        sprintf(buf, " --input-csp %s", csp);
-        strcat(cmd, buf);
-    }
     free(buf);
     return cmd;
 }
@@ -254,11 +248,10 @@ int main(int argc, char *argv[])
     int b_interlaced=0;
     /*Video Info End*/
     char *planeY, *planeU, *planeV;
-    unsigned int frame,len,chroma_height,chroma_width;
+    unsigned int frame,len,h_half,w_half;
     int i,j;
     char *cmd;
     char *infile = NULL;
-    const char *csp = NULL;
     if (argc>1)
     {
         //get the script file and other informations from the commandline
@@ -334,22 +327,13 @@ int main(int argc, char *argv[])
                      vi->width, vi->height );
             goto avs_fail;
         }
-        if ( avs_is_yv24( vi ) )
-        {
-            csp = "i444";
-            chroma_width = vi->width;
-            chroma_height = vi->height;
-        }
-        else if ( avs_is_yv16( vi ) )
-        {
-            csp = "i422";
-            chroma_width = vi->width >> 1;
-            chroma_height = vi->height;
-        }
-        else if( !avs_is_yv12( vi ) )
+        /* always call ConvertToYV12 to convert non YV12 planar colorspaces to YV12 when user's AVS supports them,
+           as all planar colorspaces are flagged as YV12. If it is already YV12 in this case, the call does nothing */
+        if( !avs_is_yv12( vi ) || avs_version >= AVS_INTERFACE_OTHER_PLANAR )
         {
             avs_h.func.avs_release_clip( avs_h.clip );
-            fprintf( stderr, "avs %s\n", "[warning]: converting input clip to YV12" );
+            fprintf( stderr, "avs %s\n", !avs_is_yv12( vi ) ? "[warning]: converting input clip to YV12"
+               : "[info]: Avisynth 2.6+ detected, forcing conversion to YV12" );
             const char *arg_name[2] = { NULL, "interlaced" };
             AVS_Value arg_arr[2] = { res, avs_new_value_bool( b_interlaced ) };
             AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "ConvertToYV12", avs_new_value_array( arg_arr, 2 ), arg_name );
@@ -361,8 +345,6 @@ int main(int argc, char *argv[])
             avs_h.clip = avs_h.func.avs_take_clip( res2, avs_h.env );
             avs_h.func.avs_release_value( res2 );
             vi = avs_h.func.avs_get_video_info( avs_h.clip );
-            chroma_width = vi->width >> 1;
-            chroma_height = vi->height >> 1;
         }
         avs_h.func.avs_release_value( res );
 
@@ -407,7 +389,7 @@ int main(int argc, char *argv[])
         si_info.hStdOutput = h_stdOut;
         si_info.hStdError = h_stdErr;
 
-        cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp );
+        cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile );
         printf("avs4x264 [info]: %s\n", cmd);
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
@@ -419,6 +401,10 @@ int main(int argc, char *argv[])
         //cleanup before writing to pipe
         CloseHandle(h_pipeRead);
         free(cmd);
+
+        //prepare for writing
+        w_half = i_width >> 1;
+        h_half = i_height >> 1;
 
         //write
         for (frame=0; frame<i_frame_total; frame++)
@@ -440,8 +426,8 @@ int main(int argc, char *argv[])
                planeY += frm->pitch;
             }
             planeU = (char*)(frm->vfb->data + frm->offsetU);
-            for (j=0; j<chroma_height; j++){
-               if( !WriteFile(h_pipeWrite, planeU, chroma_width, (PDWORD)&i, NULL) )
+            for (j=0; j<h_half; j++){
+               if( !WriteFile(h_pipeWrite, planeU, w_half, (PDWORD)&i, NULL) )
                {
                    fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264_64.exe closed)\n", frame );
                    goto process_fail;
@@ -449,8 +435,8 @@ int main(int argc, char *argv[])
                planeU += frm->pitchUV;
             } 
             planeV = (char*)(frm->vfb->data + frm->offsetV);
-            for (j=0; j<chroma_height; j++){
-               if( !WriteFile(h_pipeWrite, planeV, chroma_width, (PDWORD)&i, NULL) )
+            for (j=0; j<h_half; j++){
+               if( !WriteFile(h_pipeWrite, planeV, w_half, (PDWORD)&i, NULL) )
                {
                    fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264_64.exe closed)\n", frame );
                    goto process_fail;
