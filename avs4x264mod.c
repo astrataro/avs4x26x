@@ -15,7 +15,7 @@
 // Example:
 // avs4x264mod.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
 
-// avs4x264mod v0.3
+// avs4x264mod v0.4
 // Modified by 06_taro ( astrataro@gmail.com ).
 // Modifications: 
 // -- When x264's parameter "input-depth" is set and is not equal to 8, 
@@ -39,7 +39,7 @@
 //Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
 #define VERSION_MAJOR 0
-#define VERSION_MINOR 3
+#define VERSION_MINOR 4
 
 #include <stdio.h>
 #include <stdlib.h>
