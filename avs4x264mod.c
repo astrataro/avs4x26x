@@ -15,7 +15,7 @@
 // Example:
 // avs4x264mod.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
 
-// avs4x264mod v0.4
+// avs4x264mod v0.5:
 // Modified by 06_taro ( astrataro@gmail.com ).
 // Modifications: 
 // -- When x264's parameter "input-depth" is set and is not equal to 8, 
@@ -34,12 +34,15 @@
 //    Example:
 //    avs4x264mod.exe --x264-binary "C:\x264.exe" -o out.264 in.avs
 //    avs4x264mod.exe -L "C:\x264.exe" -o out.264 in.avs
-// -- Directly output i422/i444 with AviSynth 2.6 csp YV16/YV24
+// -- Directly output i422/i444 with AviSynth 2.6 csp YV16/YV24.
+// -- Improve capability with more styles of parameters in x264.
+//    E.g., --tcfile-in="timecode.txt", --input-depth=16,
+//          --x264-binary="x264", -L=x264 and -Lx264.
 
-//Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
+// Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
 #define VERSION_MAJOR 0
-#define VERSION_MINOR 4
+#define VERSION_MINOR 5
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -149,20 +152,43 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     cmd = malloc(8192);
     for (i=1;i<argc;i++)
     {
-        if( !strcmp(argv[i], "--x264-binary") || !strcmp(argv[i], "-L") )
+        if( !strncmp(argv[i], "--x264-binary", 13) || !strncmp(argv[i], "-L", 2) )
         {
-            x264_binary = argv[i+1];
-            for (;i<argc-2;i++)
+            if( !strcmp(argv[i], "--x264-binary") || !strcmp(argv[i], "-L") )
             {
-                argv[i] = argv[i+2];
+                x264_binary = argv[i+1];
+                for (;i<argc-2;i++)
+                    argv[i] = argv[i+2];
+                argc -= 2;
+                break;
             }
-            argc -= 2;
+            if( !strncmp(argv[i], "--x264-binary=", 14) )
+            {
+                x264_binary = argv[i]+14;
+                for (;i<argc-1;i++)
+                    argv[i] = argv[i+1];
+                argc--;
+                break;
+            }
+            if( !strncmp(argv[i], "-L=", 3) )
+            {
+                x264_binary = argv[i]+3;
+                for (;i<argc-1;i++)
+                    argv[i] = argv[i+1];
+                argc--;
+                break;
+            }
+            /* else argv[i] should have structure like -Lx264 */
+            x264_binary = argv[i]+2;
+            for (;i<argc-1;i++)
+                argv[i] = argv[i+1];
+            argc--;
             break;
         }
     }
     for (i=1;i<argc;i++)
     {
-        if( !strcmp(argv[i], "--tcfile-in") )
+        if( !strncmp(argv[i], "--tcfile-in", 11) )
         {
             b_tc = 1;
             break;
@@ -170,12 +196,20 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     }
     for (i=1;i<argc;i++)
     {
-        if( !strcmp(argv[i], "--input-depth") )
+        if( !strncmp(argv[i], "--input-depth", 13) )
         {
-            if( strcmp(argv[++i], "8") )
+            if( strcmp(argv[i], "--input-depth=8") )
             {
                 i_width >>= 1;
                 break;
+            }
+            if( !strcmp(argv[i], "--input-depth") )
+            {
+                if( strcmp(argv[++i], "8") )
+                {
+                    i_width >>= 1;
+                    break;
+                }
             }
         }
     }
