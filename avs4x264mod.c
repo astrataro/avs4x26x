@@ -37,9 +37,6 @@
 
 //Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod
 
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 3
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -54,8 +51,6 @@
 #undef EXTERN_C
 
 #include "avisynth_c.h"
-
-#define DEFAULT_BINARY_PATH "x264_64"
 
 #define PIPE_BUFFER_SIZE (DWORD)0//1048576 // values bigger than 250000 break the application
 
@@ -131,7 +126,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     int b_tc = 0;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
-    x264_binary = DEFAULT_BINARY_PATH;
+    x264_binary = "x264_64";
     if (len)
     {
         len -=(unsigned int)argv[0];
@@ -462,15 +457,6 @@ int main(int argc, char *argv[])
         if( avs_h.func.avs_delete_script_environment )
             avs_h.func.avs_delete_script_environment( avs_h.env );
         FreeLibrary( avs_h.library );
-    }
-    else
-    {
-        printf("avs4x264mod - simple Avisynth pipe tool for x264\n"
-               "Version: %d.%d\n\n"                                                           , VERSION_MAJOR, VERSION_MINOR);
-        printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
-        printf("Options:\n");
-        printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
-        return -1;
     }
     return exitcode;
 }
