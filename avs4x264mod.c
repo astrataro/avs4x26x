@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
             for (j=0; j<i_height; j++){
                if( !WriteFile(h_pipeWrite, planeY, i_width, (PDWORD)&i, NULL) )
                {
-                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264_64.exe closed)\n", frame );
+                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264 closed)\n", frame );
                    goto process_fail;
                }
                planeY += frm->pitch;
@@ -519,7 +519,7 @@ int main(int argc, char *argv[])
             for (j=0; j<chroma_height; j++){
                if( !WriteFile(h_pipeWrite, planeU, chroma_width, (PDWORD)&i, NULL) )
                {
-                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264_64.exe closed)\n", frame );
+                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264 closed)\n", frame );
                    goto process_fail;
                }
                planeU += frm->pitchUV;
@@ -528,7 +528,7 @@ int main(int argc, char *argv[])
             for (j=0; j<chroma_height; j++){
                if( !WriteFile(h_pipeWrite, planeV, chroma_width, (PDWORD)&i, NULL) )
                {
-                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264_64.exe closed)\n", frame );
+                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264 closed)\n", frame );
                    goto process_fail;
                }
                planeV += frm->pitchUV;
