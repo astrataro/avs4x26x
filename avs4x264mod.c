@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
         else
         {
             avs_h.func.avs_release_clip( avs_h.clip );
-            fprintf( stderr, "avs %s\n", "[warning]: converting input clip to YV12" );
+            fprintf( stderr, "avs [warning]: converting input clip to YV12\n" );
             const char *arg_name[2] = { NULL, "interlaced" };
             AVS_Value arg_arr[2] = { res, avs_new_value_bool( b_interlaced ) };
             AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "ConvertToYV12", avs_new_value_array( arg_arr, 2 ), arg_name );
