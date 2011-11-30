@@ -139,9 +139,12 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     {
         if( !strcmp(argv[i], "--x264-binary") )
         {
-            argv[i] = "";
-            x264_binary = argv[++i];
-            argv[i] = "";
+            x264_binary = argv[i+1];
+            for (;i<argc-2;i++)
+            {
+                argv[i] = argv[i+2];
+            }
+            argc -= 2;
             break;
         }
     }
