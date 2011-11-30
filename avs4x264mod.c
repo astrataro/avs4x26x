@@ -133,9 +133,9 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
 {
     int i;
     char *cmd, *buf;
-    int b_write_fps = 1;
-    int b_write_csp = 1;
-    int b_write_res = 1;
+    int b_add_fps    = 1;
+    int b_add_csp    = 1;
+    int b_add_res    = 1;
     int b_add_frames = 1;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
@@ -202,7 +202,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     {
         if( !strncmp(argv[i], "--tcfile-in", 11) || !strncmp(argv[i], "--fps", 5) )
         {
-            b_write_fps = 0;
+            b_add_fps = 0;
             break;
         }
     }
@@ -210,7 +210,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     {
         if( !strncmp(argv[i], "--input-csp", 11) )
         {
-            b_write_csp = 0;
+            b_add_csp = 0;
             break;
         }
     }
@@ -218,7 +218,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     {
         if( !strncmp(argv[i], "--input-res", 11) )
         {
-            b_write_res = 0;
+            b_add_res = 0;
             break;
         }
     }
@@ -281,17 +281,17 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
         sprintf(buf, " --frames %d", i_frame_total);
         strcat(cmd, buf);
     }
-    if ( b_write_fps )
+    if ( b_add_fps )
     {
         sprintf(buf, " --fps %d/%d", i_fps_num, i_fps_den);
         strcat(cmd, buf);
     }
-    if ( b_write_res )
+    if ( b_add_res )
     {
         sprintf(buf, " --input-res %dx%d", i_width, i_height);
         strcat(cmd, buf);
     }
-    if ( csp && b_write_csp )
+    if ( csp && b_add_csp )
     {
         sprintf(buf, " --input-csp %s", csp);
         strcat(cmd, buf);
