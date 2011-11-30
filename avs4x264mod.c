@@ -174,7 +174,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
         {
             if( strcmp(argv[++i], "8") )
             {
-                i_width /= 2;
+                i_width >>= 1;
                 break;
             }
         }
