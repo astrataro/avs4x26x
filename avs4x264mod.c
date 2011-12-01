@@ -4,49 +4,6 @@
 // the Free Software Foundation; either version 2 of the License, or
 // (at your option) any later version.
 
-// The code is based on on AVS-input
-// from x264 (http://www.videolan.org/developers/x264.html).
-
-// You can use this software to encode videos using the 32-bit version
-// of Avisynth with the 64-bit version of x264 under Windows.
-// The x264 executable needs to be named x264_64.exe and placed in the
-// same folder as this program. Otherwise use --x264-binary "x264_path"
-// or -L "x264_path" to define the pach of x264 binary.
-// Example:
-// avs4x264mod.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
-
-// avs4x264mod v0.6:
-// Modified by 06_taro ( astrataro@gmail.com ).
-// Modifications: 
-// -- When x264's parameter "input-depth" is set and is not equal to 8, 
-//    divide "width" by 2. This makes faked 16-bit avs output, i.e.,
-//    MSB and LSB field interleaved clip, be treated correctly by x264.
-//    If "input-depth" is not defined or equals to 8, avs4x264mod acts
-//    in the same way as original avs4x264.
-//    Example:
-//    avs4x264mod.exe --input-depth 16 "C:\x264.exe" -out o.264 in.avs
-// -- Print full command-line piped out to x264_64.exe to screen,
-//    prefixed by "avs4x264 [info]:".
-// -- Make x264_64.exe path changeable. The path of x264 binary can be
-//    set by --x264-binary "x264_path" or -L "x264_path".
-//    Use "x264_64" by default if
-//    --x264-binary is not set.
-//    Example:
-//    avs4x264mod.exe --x264-binary "C:\x264.exe" -o out.264 in.avs
-//    avs4x264mod.exe -L "C:\x264.exe" -o out.264 in.avs
-// -- Directly output i422/i444 with AviSynth 2.6 csp YV16/YV24.
-// -- Improve capability with more styles of parameters in x264.
-//    E.g., --tcfile-in="timecode.txt", --input-depth=16,
-//          --x264-binary="x264", -L=x264 and -Lx264.
-// -- Do not add --input-res/--fps/--frames if already defined.
-// -- Correct number of frames to be handled when --frames is defined.
-
-// Compiling:
-// with gcc 4.6.x:
-// gcc avs4x264mod.c -s -Ofast -oavs4x264mod -Wl,--large-address-aware
-// with old versions:
-// gcc avs4x264mod.c -s -O3 -oavs4x264mod -Wl,--large-address-aware
-
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  6
 #define VERSION_BUGFIX 0
