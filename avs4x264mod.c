@@ -41,7 +41,11 @@
 // -- Do not add --input-res/--fps/--frames if already defined.
 // -- Correct number of frames to be handled when --frames is defined.
 
-// Compiling: gcc avs4x264mod.c -s -Ofast -oavs4x264mod -Wl,--large-address-aware
+// Compiling:
+// with gcc 4.6.x:
+// gcc avs4x264mod.c -s -Ofast -oavs4x264mod -Wl,--large-address-aware
+// with old versions:
+// gcc avs4x264mod.c -s -O3 -oavs4x264mod -Wl,--large-address-aware
 
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  6
