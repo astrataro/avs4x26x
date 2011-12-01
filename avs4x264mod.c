@@ -230,13 +230,12 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             {
                 strcat(cmd, "\"");
                 strcat(cmd, argv[i]);
-                strcat(cmd, "\" ");
+                strcat(cmd, "\"");
             }
             else
-            {
                 strcat(cmd, argv[i]);
+            if(i<argc-1)
                 strcat(cmd, " ");
-            }
         }
     }
     if ( b_add_frames )
