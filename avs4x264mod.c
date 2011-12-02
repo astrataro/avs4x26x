@@ -126,29 +126,28 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
                 for (;i<argc-2;i++)
                     argv[i] = argv[i+2];
                 argc -= 2;
-                break;
             }
-            if( !strncmp(argv[i], "--x264-binary=", 14) )
+            else if( !strncmp(argv[i], "--x264-binary=", 14) )
             {
                 x264_binary = argv[i]+14;
                 for (;i<argc-1;i++)
                     argv[i] = argv[i+1];
                 argc--;
-                break;
             }
-            if( !strncmp(argv[i], "-L=", 3) )
+            else if( !strncmp(argv[i], "-L=", 3) )
             {
                 x264_binary = argv[i]+3;
                 for (;i<argc-1;i++)
                     argv[i] = argv[i+1];
                 argc--;
-                break;
             }
-            /* else argv[i] should have structure like -Lx264 */
-            x264_binary = argv[i]+2;
-            for (;i<argc-1;i++)
-                argv[i] = argv[i+1];
-            argc--;
+            else                           /* else argv[i] should have structure like -Lx264 */
+            {
+                x264_binary = argv[i]+2;
+                for (;i<argc-1;i++)
+                    argv[i] = argv[i+1];
+                argc--;
+            }
             break;
         }
     }
@@ -187,19 +186,20 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     {
         if( !strncmp(argv[i], "--input-depth", 13) )
         {
-            if( strcmp(argv[i], "--input-depth=8") )
-            {
-                i_width >>= 1;
-                break;
-            }
             if( !strcmp(argv[i], "--input-depth") )
             {
                 if( strcmp(argv[++i], "8") )
                 {
                     i_width >>= 1;
-                    break;
+                    fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
                 }
             }
+            else if( strcmp(argv[i], "--input-depth=8") )
+            {
+                i_width >>= 1;
+                fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
+            }
+            break;
         }
     }
 
@@ -353,6 +353,12 @@ int main(int argc, char *argv[])
         }
         avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
         avs_version = avs_h.func.avs_get_version( avs_h.clip );
+        fprintf( stdout, "avs [info]: Avisynth version: %s\n", avs_version >= 5 ? "2.6+" :
+                                                               avs_version == 4 ? "2.6 pre alpha" :
+                                                               avs_version == 3 ? "2.5.6 - 2.5.8" :
+                                                               avs_version == 2 ? "2.5.0 - 2.5.5" :
+                                                               avs_version == 1 ? "1.0 - 2.0"
+                                                                                : "fail to detect" );
         const AVS_VideoInfo *vi = avs_h.func.avs_get_video_info( avs_h.clip );
         if( !avs_has_video( vi ) )
         {
@@ -370,23 +376,26 @@ int main(int argc, char *argv[])
             csp = "i420";
             chroma_width = vi->width >> 1;
             chroma_height = vi->height >> 1;
+            fprintf( stdout, "avs [info]: Video colorspace: YV12\n" );
         }
         else if ( avs_is_yv24( vi ) )
         {
             csp = "i444";
             chroma_width = vi->width;
             chroma_height = vi->height;
+            fprintf( stdout, "avs [info]: Video colorspace: YV24\n" );
         }
         else if ( avs_is_yv16( vi ) )
         {
             csp = "i422";
             chroma_width = vi->width >> 1;
             chroma_height = vi->height;
+            fprintf( stdout, "avs [info]: Video colorspace: YV16\n" );
         }
         else
         {
             avs_h.func.avs_release_clip( avs_h.clip );
-            fprintf( stderr, "avs [warning]: converting input clip to YV12\n" );
+            fprintf( stderr, "avs [warning]: Converting input clip to YV12\n" );
             const char *arg_name[2] = { NULL, "interlaced" };
             AVS_Value arg_arr[2] = { res, avs_new_value_bool( b_interlaced ) };
             AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "ConvertToYV12", avs_new_value_array( arg_arr, 2 ), arg_name );
@@ -409,6 +418,10 @@ int main(int argc, char *argv[])
         i_fps_num = vi->fps_numerator;
         i_fps_den = vi->fps_denominator;
         i_frame_total = vi->num_frames;
+        fprintf( stdout, "avs [info]: Video resolution: %dx%d\n"
+                         "avs [info]: Video framerate: %d/%d\n"
+                         "avs [info]: Video framecount: %d\n",
+                 vi->width, vi->height, vi->fps_numerator, vi->fps_denominator, vi->num_frames );
         
         //execute the commandline
         h_process = GetCurrentProcess();
@@ -520,11 +533,11 @@ int main(int argc, char *argv[])
         }
         else
         {
-            fprintf( stderr, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping", i_encode_frames );
+            fprintf( stdout, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping", i_encode_frames );
         }
 
         cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp, b_tc, i_encode_frames );
-        printf("avs4x264 [info]: %s\n", cmd);
+        fprintf( stdout, "avs4x264 [info]: %s\n", cmd);
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
         {
@@ -595,8 +608,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        printf("avs4x264mod - simple Avisynth pipe tool for x264\n"
-               "Version: %d.%d.%d\n\n"                                                        , VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX);
+        printf("\navs4x264mod - simple Avisynth pipe tool for x264\n"
+               "Version: %d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, __DATE__, __TIME__);
         printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
         printf("Options:\n");
         printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
