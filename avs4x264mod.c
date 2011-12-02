@@ -6,7 +6,7 @@
 
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  6
-#define VERSION_BUGFIX 0
+#define VERSION_BUGFIX 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,14 +92,13 @@ fail:
     return -1;
 }
 
-char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp )
+char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp, int b_tc, int i_encode_frames )
 {
     int i;
     char *cmd, *buf;
     int b_add_fps    = 1;
     int b_add_csp    = 1;
     int b_add_res    = 1;
-    int b_add_frames = 1;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
     x264_binary = DEFAULT_BINARY_PATH;
@@ -153,20 +152,19 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             break;
         }
     }
-    for (i=1;i<argc;i++)
+    if ( b_tc )
     {
-        if( !strncmp(argv[i], "--frames", 8) )
-        {
-            b_add_frames = 0;
-            break;
-        }
+        b_add_fps = 0;
     }
-    for (i=1;i<argc;i++)
+    else
     {
-        if( !strncmp(argv[i], "--tcfile-in", 11) || !strncmp(argv[i], "--fps", 5) )
+        for (i=1;i<argc;i++)
         {
-            b_add_fps = 0;
-            break;
+            if( !strncmp(argv[i], "--fps", 5) )
+            {
+                b_add_fps = 0;
+                break;
+            }
         }
     }
     for (i=1;i<argc;i++)
@@ -238,11 +236,10 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
                 strcat(cmd, " ");
         }
     }
-    if ( b_add_frames )
-    {
-        sprintf(buf, " --frames %d", i_frame_total);
-        strcat(cmd, buf);
-    }
+    
+    sprintf(buf, " --frames %d", i_encode_frames);
+    strcat(cmd, buf);
+    
     if ( b_add_fps )
     {
         sprintf(buf, " --fps %d/%d", i_fps_num, i_fps_den);
@@ -281,8 +278,11 @@ int main(int argc, char *argv[])
     int i_height;
     int i_fps_num;
     int i_fps_den;
+    int i_frame_start=0;
     int i_frame_total;
     int b_interlaced=0;
+    int b_tc=0;
+    int i_encode_frames;
     /*Video Info End*/
     char *planeY, *planeU, *planeV;
     unsigned int frame,len,chroma_height,chroma_width;
@@ -445,7 +445,85 @@ int main(int argc, char *argv[])
         si_info.hStdOutput = h_stdOut;
         si_info.hStdError = h_stdErr;
 
-        cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp );
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--tcfile-in", 11) )
+            {
+                b_tc = 1;
+                break;
+            }
+        }
+
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--seek", 6) )
+            {
+                if( !strcmp(argv[i], "--seek") )
+                {
+                    i_frame_start = atoi(argv[i+1]);
+                    if( !b_tc )                      /* delete seek parameters if no timecodes */
+                    {
+                        for (;i<argc-2;i++)
+                            argv[i] = argv[i+2];
+                        argc -= 2;
+                    }
+                }
+                else
+                {
+                    i_frame_start = atoi(argv[i]+7);
+                    if( !b_tc )                      /* delete seek parameters if no timecodes */
+                    {
+                        for (;i<argc-1;i++)
+                            argv[i] = argv[i+1];
+                        argc -= 1;
+                    }
+                }
+                break;
+            }
+        }
+
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--frames", 8) )
+            {
+                if( !strcmp(argv[i], "--frames") )
+                {
+                    i_frame_total = atoi(argv[i+1]);
+                    for (;i<argc-2;i++)
+                        argv[i] = argv[i+2];
+                    argc -= 2;
+                }
+                else
+                {
+                    i_frame_total = atoi(argv[i]+9);
+                    for (;i<argc-1;i++)
+                        argv[i] = argv[i+1];
+                    argc -= 1;
+                }
+                i_frame_total += i_frame_start; /* ending frame should add offset of i_frame_start, not needed if not set as will be clamped */
+                break;
+            }
+        }
+
+        if ( vi->num_frames < i_frame_total )
+        {
+            fprintf( stderr, "avs4x264 [warning]: x264 is trying to encode until frame %d, but input clip has only %d %s\n",
+                     i_frame_total, vi->num_frames, vi->num_frames > 1 ? "frames" : "frame" );
+            i_frame_total = vi->num_frames;
+        }
+
+        i_encode_frames = i_frame_total - i_frame_start;
+
+        if ( b_tc )                             /* don't skip the number --seek defines if has timecodes */
+        {
+            i_frame_start = 0;
+        }
+        else
+        {
+            fprintf( stderr, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping", i_encode_frames );
+        }
+
+        cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp, b_tc, i_encode_frames );
         printf("avs4x264 [info]: %s\n", cmd);
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
@@ -458,32 +536,8 @@ int main(int argc, char *argv[])
         CloseHandle(h_pipeRead);
         free(cmd);
 
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--frames", 8) )
-            {
-                if( !strcmp(argv[i], "--frames") )
-                {
-                    i_frame_total = atoi(argv[i+1]);
-                    break;
-                }
-                else
-                {
-                    i_frame_total = atoi(argv[i]+9);
-                    break;
-                }
-            }
-        }
-        if( vi->num_frames < i_frame_total )
-        {
-            fprintf( stderr, "avs4x264 [warning]: x264 is trying to encode %d %s, but input clip has only %d %s\n",
-                     i_frame_total,  i_frame_total  > 1 ? "frames" : "frame",
-                     vi->num_frames, vi->num_frames > 1 ? "frames" : "frame" );
-            i_frame_total = vi->num_frames;
-        }
-
         //write
-        for (frame=0; frame<i_frame_total; frame++)
+        for ( frame=i_frame_start; frame<i_frame_total; frame++ )
         {
             frm = avs_h.func.avs_get_frame( avs_h.clip, frame );
             const char *err = avs_h.func.avs_clip_get_error( avs_h.clip );
