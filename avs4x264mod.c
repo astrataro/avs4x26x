@@ -22,6 +22,7 @@
 #undef EXTERN_C
 
 #include "avisynth_c.h"
+#include "version.h"
 
 #define DEFAULT_BINARY_PATH "x264_64"
 
@@ -609,7 +610,7 @@ int main(int argc, char *argv[])
     else
     {
         printf("\navs4x264mod - simple Avisynth pipe tool for x264\n"
-               "Version: %d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, __DATE__, __TIME__);
+               "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
         printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
         printf("Options:\n");
         printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
