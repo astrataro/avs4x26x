@@ -532,9 +532,9 @@ int main(int argc, char *argv[])
         {
             i_frame_start = 0;
         }
-        else
+        else if ( i_frame_start != 0 )
         {
-            fprintf( stdout, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping", i_encode_frames );
+            fprintf( stdout, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping\n", i_frame_start );
         }
 
         cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp, b_tc, i_encode_frames );
