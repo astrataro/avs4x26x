@@ -1,0 +1,8 @@
+*~
+*.exe
+*.dll
+*.log
+*.diff
+*.patch
+*.orig
+*.rej

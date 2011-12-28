@@ -283,6 +283,7 @@ int main(int argc, char *argv[])
     int i_frame_total;
     int b_interlaced=0;
     int b_tc=0;
+    int b_seek_safe=0;
     int i_encode_frames;
     /*Video Info End*/
     char *planeY, *planeU, *planeV;
@@ -312,6 +313,87 @@ int main(int argc, char *argv[])
         {
             fprintf( stderr, "No avs script found.\n");
             return -1;
+        }
+
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--tcfile-in", 11) )
+            {
+                b_tc = 1;
+                break;
+            }
+        }
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--seek-mode", 11) )
+            {
+                if( !strcmp(argv[i], "--seek-mode") )
+                {
+                    if( !strcasecmp(argv[i+1], "safe" ) )
+                    {
+                        b_seek_safe = 1;
+                    }
+                    else if( !strcasecmp(argv[i+1], "fast" ) )
+                    {
+                        b_seek_safe = 0;
+                    }
+                    else
+                    {
+                        fprintf( stderr, "avs4x264 [error]: invalid seek-mode\n" );
+                        return -1;
+                    }
+                    for (;i<argc-2;i++)
+                        argv[i] = argv[i+2];
+                    argc -= 2;
+                }
+                else if( !strncmp(argv[i], "--seek-mode=", 12) )
+                {
+                    if( !strcasecmp(argv[i]+12, "safe" ) )
+                    {
+                        b_seek_safe = 1;
+                    }
+                    else if( !strcasecmp(argv[i]+12, "fast" ) )
+                    {
+                        b_seek_safe = 0;
+                    }
+                    else
+                    {
+                        fprintf( stderr, "avs4x264 [error]: invalid seek-mode\n" );
+                        return -1;
+                    }
+                    for (;i<argc-1;i++)
+                        argv[i] = argv[i+1];
+                    argc--;
+                }
+                break;
+            }
+        }
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--seek", 6) )
+            {
+                if( !strcmp(argv[i], "--seek") )
+                {
+                    i_frame_start = atoi(argv[i+1]);
+                    if( !b_tc && !b_seek_safe )       /* delete seek parameters if no timecodes and seek-mode=fast */
+                    {
+                        for (;i<argc-2;i++)
+                            argv[i] = argv[i+2];
+                        argc -= 2;
+                    }
+                }
+                else
+                {
+                    i_frame_start = atoi(argv[i]+7);
+                    if( !b_tc && !b_seek_safe )       /* delete seek parameters if no timecodes and seek-mode=fast */
+                    {
+                        for (;i<argc-1;i++)
+                            argv[i] = argv[i+1];
+                        argc -= 1;
+                    }
+                }
+                break;
+            }
         }
 
         //avs open
@@ -461,43 +543,6 @@ int main(int argc, char *argv[])
 
         for (i=1;i<argc;i++)
         {
-            if( !strncmp(argv[i], "--tcfile-in", 11) )
-            {
-                b_tc = 1;
-                break;
-            }
-        }
-
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--seek", 6) )
-            {
-                if( !strcmp(argv[i], "--seek") )
-                {
-                    i_frame_start = atoi(argv[i+1]);
-                    if( !b_tc )                      /* delete seek parameters if no timecodes */
-                    {
-                        for (;i<argc-2;i++)
-                            argv[i] = argv[i+2];
-                        argc -= 2;
-                    }
-                }
-                else
-                {
-                    i_frame_start = atoi(argv[i]+7);
-                    if( !b_tc )                      /* delete seek parameters if no timecodes */
-                    {
-                        for (;i<argc-1;i++)
-                            argv[i] = argv[i+1];
-                        argc -= 1;
-                    }
-                }
-                break;
-            }
-        }
-
-        for (i=1;i<argc;i++)
-        {
             if( !strncmp(argv[i], "--frames", 8) )
             {
                 if( !strcmp(argv[i], "--frames") )
@@ -528,7 +573,7 @@ int main(int argc, char *argv[])
 
         i_encode_frames = i_frame_total - i_frame_start;
 
-        if ( b_tc )                             /* don't skip the number --seek defines if has timecodes */
+        if ( b_tc || b_seek_safe )              /* don't skip the number --seek defines if has timecodes or seek-mode=safe */
         {
             i_frame_start = 0;
         }
@@ -609,11 +654,21 @@ int main(int argc, char *argv[])
     }
     else
     {
-        printf("\navs4x264mod - simple Avisynth pipe tool for x264\n"
+        printf("\n"
+               "avs4x264mod - simple Avisynth pipe tool for x264\n"
                "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
         printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
         printf("Options:\n");
         printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
+        printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
+               "                                - fast: skip process of frames before seek number as x264 does if no --tcfile-in\n"
+               "                                        otherwise freeze frames before seek number to skip process but keep frame number\n"
+               "                                        ( x264 treats tcfile-in as timecodes of input video, not output video )\n"
+               "                                        normally safe enough for most randomly seekable AviSynth scripts\n"
+               "                                        may break scripts which can only be linearly seeked, like TDecimate(mode=3)\n"
+               "                                - safe: process and deliver every frame to x264\n"
+               "                                        should give accurate result with every AviSynth script\n"
+               "                                        significantly slower when the process is heavy\n");
         return -1;
     }
     return exitcode;
