@@ -6,7 +6,7 @@
 
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  6
-#define VERSION_BUGFIX 1
+#define VERSION_BUGFIX 2
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,6 +91,29 @@ static int avs_load_library( avs_hnd_t *h )
 fail:
     FreeLibrary( h->library );
     return -1;
+}
+
+static float get_avs_version( avs_hnd_t avs_h )
+{
+    if( !avs_h.func.avs_function_exists( avs_h.env, "VersionNumber" ) )
+    {
+       fprintf( stderr, "avs [error]: VersionNumber does not exist\n" );
+       return -1;
+    }
+    AVS_Value ver = avs_h.func.avs_invoke( avs_h.env, "VersionNumber", avs_new_value_array( NULL, 0 ), NULL );
+    if( avs_is_error( ver ) )
+    {
+       fprintf( stderr, "avs [error]: Unable to determine avisynth version: %s\n", avs_as_error( ver ) );
+       return -1;
+    }
+    if( !avs_is_float( ver ) )
+    {
+       fprintf( stderr, "avs [error]: VersionNumber did not return a float value\n" );
+       return -1;
+    }
+    float ret = avs_as_float( ver );
+    avs_h.func.avs_release_value( ver );
+    return ret;
 }
 
 static AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, AVS_Value release )
@@ -275,7 +298,7 @@ int main(int argc, char *argv[])
     avs_hnd_t avs_h;
     AVS_Value arg;
     AVS_Value res;
-    int avs_version;
+    float avs_version;
     AVS_VideoFrame *frm;
     //createprocess related
     HANDLE h_process, h_stdOut, h_stdErr, h_pipeRead, h_pipeWrite;
@@ -453,13 +476,8 @@ int main(int argc, char *argv[])
             goto avs_fail;
         }
         avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
-        avs_version = avs_h.func.avs_get_version( avs_h.clip );
-        fprintf( stdout, "avs [info]: Avisynth version: %s\n", avs_version >= 5 ? "2.6+" :
-                                                               avs_version == 4 ? "2.6 pre alpha" :
-                                                               avs_version == 3 ? "2.5.6 - 2.5.8" :
-                                                               avs_version == 2 ? "2.5.0 - 2.5.5" :
-                                                               avs_version == 1 ? "1.0 - 2.0"
-                                                                                : "fail to detect" );
+        avs_version = get_avs_version( avs_h );
+        fprintf( stdout, "avs [info]: Avisynth version: %.2f\n", avs_version );
         const AVS_VideoInfo *vi = avs_h.func.avs_get_video_info( avs_h.clip );
         if( !avs_has_video( vi ) )
         {
@@ -512,7 +530,7 @@ int main(int argc, char *argv[])
 
         if ( !b_seek_safe && i_frame_start && ( b_qp || b_tc ) )
         {
-            fprintf( stdout, "avs [info]: seek-mode=fast with qpfile or timecodes in, freeze first %d %s for fast processing\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
+            fprintf( stdout, "avs4x264 [info]: seek-mode=fast with qpfile or timecodes in, freeze first %d %s for fast processing\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
             AVS_Value arg_arr[4] = { res, avs_new_value_int( 0 ), avs_new_value_int( i_frame_start ), avs_new_value_int( i_frame_start ) };
             AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "FreezeFrame", avs_new_value_array( arg_arr, 4 ), NULL );
             if( avs_is_error( res2 ) )
