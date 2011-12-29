@@ -282,6 +282,7 @@ int main(int argc, char *argv[])
     int i_frame_start=0;
     int i_frame_total;
     int b_interlaced=0;
+    int b_qp=0;
     int b_tc=0;
     int b_seek_safe=0;
     int i_encode_frames;
@@ -315,6 +316,14 @@ int main(int argc, char *argv[])
             return -1;
         }
 
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--qpfile", 8) )
+            {
+                b_qp = 1;
+                break;
+            }
+        }
         for (i=1;i<argc;i++)
         {
             if( !strncmp(argv[i], "--tcfile-in", 11) )
@@ -375,7 +384,7 @@ int main(int argc, char *argv[])
                 if( !strcmp(argv[i], "--seek") )
                 {
                     i_frame_start = atoi(argv[i+1]);
-                    if( !b_tc && !b_seek_safe )       /* delete seek parameters if no timecodes and seek-mode=fast */
+                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
                     {
                         for (;i<argc-2;i++)
                             argv[i] = argv[i+2];
@@ -385,7 +394,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     i_frame_start = atoi(argv[i]+7);
-                    if( !b_tc && !b_seek_safe )       /* delete seek parameters if no timecodes and seek-mode=fast */
+                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
                     {
                         for (;i<argc-1;i++)
                             argv[i] = argv[i+1];
@@ -573,7 +582,7 @@ int main(int argc, char *argv[])
 
         i_encode_frames = i_frame_total - i_frame_start;
 
-        if ( b_tc || b_seek_safe )              /* don't skip the number --seek defines if has timecodes or seek-mode=safe */
+        if ( b_tc || b_qp || b_seek_safe )      /* don't skip the number --seek defines if has timecodes/qpfile or seek-mode=safe */
         {
             i_frame_start = 0;
         }
@@ -661,7 +670,7 @@ int main(int argc, char *argv[])
         printf("Options:\n");
         printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
         printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
-               "                                - fast: skip process of frames before seek number as x264 does if no --tcfile-in\n"
+               "                                - fast: skip process of frames before seek number as x264 does if no --tcfile-in/--qpfile\n"
                "                                        otherwise freeze frames before seek number to skip process but keep frame number\n"
                "                                        ( x264 treats tcfile-in as timecodes of input video, not output video )\n"
                "                                        normally safe enough for most randomly seekable AviSynth scripts\n"

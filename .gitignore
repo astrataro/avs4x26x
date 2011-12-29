@@ -1,4 +1,5 @@
 *~
+*.avs
 *.exe
 *.dll
 *.log
@@ -6,3 +7,4 @@
 *.patch
 *.orig
 *.rej
+test/*
