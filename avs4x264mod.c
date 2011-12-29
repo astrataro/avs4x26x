@@ -93,6 +93,15 @@ fail:
     return -1;
 }
 
+static AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, AVS_Value release )
+{
+    avs_h.func.avs_release_clip( avs_h.clip );
+    avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
+    avs_h.func.avs_release_value( release );
+    vi = avs_h.func.avs_get_video_info( avs_h.clip );
+    return res;
+}
+
 char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp, int b_tc, int i_encode_frames )
 {
     int i;
@@ -220,7 +229,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     cmd = (char *)p_cmd;
     strcpy(cmd, cmd_tmp);
     free(cmd_tmp);
-    
+
     for (i=1;i<argc;i++)
     {
         if (infile!=argv[i])
@@ -237,10 +246,10 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
                 strcat(cmd, " ");
         }
     }
-    
+
     sprintf(buf, " --frames %d", i_encode_frames);
     strcat(cmd, buf);
-    
+
     if ( b_add_fps )
     {
         sprintf(buf, " --fps %d/%d", i_fps_num, i_fps_den);
@@ -425,7 +434,7 @@ int main(int argc, char *argv[])
             fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
             goto avs_fail;
         }
-        
+
         /* check if the user is using a multi-threaded script and apply distributor if necessary.
            adapted from avisynth's vfw interface */
         AVS_Value mt_test = avs_h.func.avs_invoke( avs_h.env, "GetMTMode", avs_new_value_bool( 0 ), NULL );
@@ -486,7 +495,6 @@ int main(int argc, char *argv[])
         }
         else
         {
-            avs_h.func.avs_release_clip( avs_h.clip );
             fprintf( stderr, "avs [warning]: Converting input clip to YV12\n" );
             const char *arg_name[2] = { NULL, "interlaced" };
             AVS_Value arg_arr[2] = { res, avs_new_value_bool( b_interlaced ) };
@@ -496,13 +504,25 @@ int main(int argc, char *argv[])
                 fprintf( stderr, "avs [error]: Couldn't convert input clip to YV12\n" );
                 goto avs_fail;
             }
-            avs_h.clip = avs_h.func.avs_take_clip( res2, avs_h.env );
-            avs_h.func.avs_release_value( res2 );
-            vi = avs_h.func.avs_get_video_info( avs_h.clip );
+            res = update_clip( avs_h, vi, res2, res );
             csp = "i420";
             chroma_width = vi->width >> 1;
             chroma_height = vi->height >> 1;
         }
+
+        if ( !b_seek_safe && i_frame_start && ( b_qp || b_tc ) )
+        {
+            fprintf( stdout, "avs [info]: seek-mode=fast with qpfile or timecodes in, freeze first %d %s for fast processing\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
+            AVS_Value arg_arr[4] = { res, avs_new_value_int( 0 ), avs_new_value_int( i_frame_start ), avs_new_value_int( i_frame_start ) };
+            AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "FreezeFrame", avs_new_value_array( arg_arr, 4 ), NULL );
+            if( avs_is_error( res2 ) )
+            {
+                fprintf( stderr, "avs [error]: Couldn't freeze first %d %s\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
+                goto avs_fail;
+            }
+            res = update_clip( avs_h, vi, res2, res );
+        }
+
         avs_h.func.avs_release_value( res );
 
         i_width = vi->width;
@@ -514,7 +534,7 @@ int main(int argc, char *argv[])
                          "avs [info]: Video framerate: %d/%d\n"
                          "avs [info]: Video framecount: %d\n",
                  vi->width, vi->height, vi->fps_numerator, vi->fps_denominator, vi->num_frames );
-        
+
         //execute the commandline
         h_process = GetCurrentProcess();
         h_stdOut = GetStdHandle(STD_OUTPUT_HANDLE);
