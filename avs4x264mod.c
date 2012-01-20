@@ -8,715 +8,166 @@
 #define VERSION_MINOR  6
 #define VERSION_BUGFIX 2
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <windows.h>
-#include <string.h>
-#include <ctype.h>
-
-/* the AVS interface currently uses __declspec to link function declarations to their definitions in the dll.
-   this has a side effect of preventing program execution if the avisynth dll is not found,
-   so define __declspec(dllimport) to nothing and work around this */
-#undef __declspec
-#define __declspec(i)
-#undef EXTERN_C
-
-#include "avisynth_c.h"
-#include "version.h"
-
-#define DEFAULT_BINARY_PATH "x264_64"
-
-#define PIPE_BUFFER_SIZE (DWORD)0//1048576 // values bigger than 250000 break the application
-
-/* AVS uses a versioned interface to control backwards compatibility */
-/* YV12 support is required */
-#define AVS_INTERFACE_YV12 2
-/* when AVS supports other planar colorspaces, a workaround is required */
-#define AVS_INTERFACE_OTHER_PLANAR 5
-
-/* maximum size of the sequence of filters to try on non script files */
-#define AVS_MAX_SEQUENCE 5
-
-#define LOAD_AVS_FUNC(name, continue_on_fail) \
-{\
-    h->func.name = (void*)GetProcAddress( h->library, #name );\
-    if( !continue_on_fail && !h->func.name )\
-        goto fail;\
-}
-
-typedef struct
-{
-    AVS_Clip *clip;
-    AVS_ScriptEnvironment *env;
-    HMODULE library;
-    /* declare function pointers for the utilized functions to be loaded without __declspec,
-       as the avisynth header does not compensate for this type of usage */
-    struct
-    {
-        const char *(__stdcall *avs_clip_get_error)( AVS_Clip *clip );
-        AVS_ScriptEnvironment *(__stdcall *avs_create_script_environment)( int version );
-        void (__stdcall *avs_delete_script_environment)( AVS_ScriptEnvironment *env );
-        AVS_VideoFrame *(__stdcall *avs_get_frame)( AVS_Clip *clip, int n );
-        int (__stdcall *avs_get_version)( AVS_Clip *clip );
-        const AVS_VideoInfo *(__stdcall *avs_get_video_info)( AVS_Clip *clip );
-        int (__stdcall *avs_function_exists)( AVS_ScriptEnvironment *env, const char *name );
-        AVS_Value (__stdcall *avs_invoke)( AVS_ScriptEnvironment *env, const char *name,
-            AVS_Value args, const char **arg_names );
-        void (__stdcall *avs_release_clip)( AVS_Clip *clip );
-        void (__stdcall *avs_release_value)( AVS_Value value );
-        void (__stdcall *avs_release_video_frame)( AVS_VideoFrame *frame );
-        AVS_Clip *(__stdcall *avs_take_clip)( AVS_Value, AVS_ScriptEnvironment *env );
-    } func;
-} avs_hnd_t;
+#include "avs4x264mod.h"
 
 /* load the library and functions we require from it */
-static int avs_load_library( avs_hnd_t *h )
-{
-    h->library = LoadLibrary( "avisynth" );
-    if( !h->library )
-        return -1;
-    LOAD_AVS_FUNC( avs_clip_get_error, 0 );
-    LOAD_AVS_FUNC( avs_create_script_environment, 0 );
-    LOAD_AVS_FUNC( avs_delete_script_environment, 1 );
-    LOAD_AVS_FUNC( avs_get_frame, 0 );
-    LOAD_AVS_FUNC( avs_get_version, 0 );
-    LOAD_AVS_FUNC( avs_get_video_info, 0 );
-    LOAD_AVS_FUNC( avs_function_exists, 0 );
-    LOAD_AVS_FUNC( avs_invoke, 0 );
-    LOAD_AVS_FUNC( avs_release_clip, 0 );
-    LOAD_AVS_FUNC( avs_release_value, 0 );
-    LOAD_AVS_FUNC( avs_release_video_frame, 0 );
-    LOAD_AVS_FUNC( avs_take_clip, 0 );
-    return 0;
-fail:
-    FreeLibrary( h->library );
-    return -1;
-}
+int avs_load_library( avs_hnd_t *h );
+float get_avs_version( avs_hnd_t avs_h );
+AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, AVS_Value release );
+char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *vi);
+int _writefile(HANDLE hFile, char *lpBuffer, int nNumberOfBytesToWrite);
+int _mt_writefile(HANDLE hFile, char *lpBuffer, int nNumberOfBytesToWrite);
 
-static float get_avs_version( avs_hnd_t avs_h )
-{
-    if( !avs_h.func.avs_function_exists( avs_h.env, "VersionNumber" ) )
-    {
-       fprintf( stderr, "avs [error]: VersionNumber does not exist\n" );
-       return -1;
-    }
-    AVS_Value ver = avs_h.func.avs_invoke( avs_h.env, "VersionNumber", avs_new_value_array( NULL, 0 ), NULL );
-    if( avs_is_error( ver ) )
-    {
-       fprintf( stderr, "avs [error]: Unable to determine avisynth version: %s\n", avs_as_error( ver ) );
-       return -1;
-    }
-    if( !avs_is_float( ver ) )
-    {
-       fprintf( stderr, "avs [error]: VersionNumber did not return a float value\n" );
-       return -1;
-    }
-    float ret = avs_as_float( ver );
-    avs_h.func.avs_release_value( ver );
-    return ret;
-}
+void showhelp(char *prog);
+extern buffer_t OBuffer;
 
-static AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, AVS_Value release )
-{
-    avs_h.func.avs_release_clip( avs_h.clip );
-    avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
-    avs_h.func.avs_release_value( release );
-    vi = avs_h.func.avs_get_video_info( avs_h.clip );
-    return res;
-}
-
-char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp, int b_tc, int i_encode_frames )
-{
-    int i;
-    char *cmd, *buf;
-    int b_add_fps    = 1;
-    int b_add_csp    = 1;
-    int b_add_res    = 1;
-    int len = (unsigned int)strrchr(argv[0], '\\');
-    char *x264_binary;
-    x264_binary = DEFAULT_BINARY_PATH;
-    if (len)
-    {
-        len -=(unsigned int)argv[0];
-        buf = malloc(len+2<20 ? 20: len+2);
-        strncpy(buf, argv[0], len);
-        buf[len] = '\\';
-        buf[len+1] = 0;
-    }
-    else
-    {
-        buf = malloc(20);
-        *buf=0;
-    }
-    cmd = malloc(8192);
-    for (i=1;i<argc;i++)
-    {
-        if( !strncmp(argv[i], "--x264-binary", 13) || !strncmp(argv[i], "-L", 2) )
-        {
-            if( !strcmp(argv[i], "--x264-binary") || !strcmp(argv[i], "-L") )
-            {
-                x264_binary = argv[i+1];
-                for (;i<argc-2;i++)
-                    argv[i] = argv[i+2];
-                argc -= 2;
-            }
-            else if( !strncmp(argv[i], "--x264-binary=", 14) )
-            {
-                x264_binary = argv[i]+14;
-                for (;i<argc-1;i++)
-                    argv[i] = argv[i+1];
-                argc--;
-            }
-            else if( !strncmp(argv[i], "-L=", 3) )
-            {
-                x264_binary = argv[i]+3;
-                for (;i<argc-1;i++)
-                    argv[i] = argv[i+1];
-                argc--;
-            }
-            else                           /* else argv[i] should have structure like -Lx264 */
-            {
-                x264_binary = argv[i]+2;
-                for (;i<argc-1;i++)
-                    argv[i] = argv[i+1];
-                argc--;
-            }
-            break;
-        }
-    }
-    if ( b_tc )
-    {
-        b_add_fps = 0;
-    }
-    else
-    {
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--fps", 5) )
-            {
-                b_add_fps = 0;
-                break;
-            }
-        }
-    }
-    for (i=1;i<argc;i++)
-    {
-        if( !strncmp(argv[i], "--input-csp", 11) )
-        {
-            b_add_csp = 0;
-            break;
-        }
-    }
-    for (i=1;i<argc;i++)
-    {
-        if( !strncmp(argv[i], "--input-res", 11) )
-        {
-            b_add_res = 0;
-            break;
-        }
-    }
-    for (i=1;i<argc;i++)
-    {
-        if( !strncmp(argv[i], "--input-depth", 13) )
-        {
-            if( !strcmp(argv[i], "--input-depth") )
-            {
-                if( strcmp(argv[++i], "8") )
-                {
-                    i_width >>= 1;
-                    fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
-                }
-            }
-            else if( strcmp(argv[i], "--input-depth=8") )
-            {
-                i_width >>= 1;
-                fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
-            }
-            break;
-        }
-    }
-
-    sprintf(cmd, "%s%s\" - ", buf, x264_binary);
-
-    /* skip invalid path name when both avs4x264mod and x264 binary is given by full path */
-    int p_cmd = (int)cmd;
-    char *cmd_tmp;
-    cmd_tmp = malloc(8192);
-    int cmd_len = strlen(cmd);
-    cmd = strrchr( cmd, '\"' );                                              /* find the end of x264 binary path */
-    while( strlen(cmd) < cmd_len && *(cmd) != ':' )                          /* find if drive number is given */
-        cmd--;
-    while( strlen(cmd--) < cmd_len && *(cmd) != '\\' && *(cmd) != '/' );     /* if find drive number, skip invalid path before it */
-    *cmd = '"';                                                               /* insert '"' before processed path */
-    strcpy(cmd_tmp, cmd);
-    cmd = (char *)p_cmd;
-    strcpy(cmd, cmd_tmp);
-    free(cmd_tmp);
-
-    for (i=1;i<argc;i++)
-    {
-        if (infile!=argv[i])
-        {
-            if (strrchr(argv[i], ' '))
-            {
-                strcat(cmd, "\"");
-                strcat(cmd, argv[i]);
-                strcat(cmd, "\"");
-            }
-            else
-                strcat(cmd, argv[i]);
-            if(i<argc-1)
-                strcat(cmd, " ");
-        }
-    }
-
-    sprintf(buf, " --frames %d", i_encode_frames);
-    strcat(cmd, buf);
-
-    if ( b_add_fps )
-    {
-        sprintf(buf, " --fps %d/%d", i_fps_num, i_fps_den);
-        strcat(cmd, buf);
-    }
-    if ( b_add_res )
-    {
-        sprintf(buf, " --input-res %dx%d", i_width, i_height);
-        strcat(cmd, buf);
-    }
-    if ( b_add_csp )
-    {
-        sprintf(buf, " --input-csp %s", csp);
-        strcat(cmd, buf);
-    }
-    free(buf);
-    return cmd;
-}
 
 int main(int argc, char *argv[])
 {
-    //avs related
-    avs_hnd_t avs_h;
-    AVS_Value arg;
-    AVS_Value res;
-    float avs_version;
-    AVS_VideoFrame *frm;
-    //createprocess related
-    HANDLE h_process, h_stdOut, h_stdErr, h_pipeRead, h_pipeWrite;
-    SECURITY_ATTRIBUTES saAttr;
-    STARTUPINFO si_info;
-    PROCESS_INFORMATION pi_info;
-    DWORD exitcode = 0;
-    /*Video Info*/
-    int i_width;
-    int i_height;
-    int i_fps_num;
-    int i_fps_den;
-    int i_frame_start=0;
-    int i_frame_total;
-    int b_interlaced=0;
-    int b_qp=0;
-    int b_tc=0;
-    int b_seek_safe=0;
-    int i_encode_frames;
-    /*Video Info End*/
-    char *planeY, *planeU, *planeV;
-    unsigned int frame,len,chroma_height,chroma_width;
-    int i,j;
-    char *cmd;
-    char *infile = NULL;
-    const char *csp = NULL;
-    if (argc>1)
-    {
-        //get the script file and other informations from the commandline
-        for (i=1;i<argc;i++)
-        {
-            len =  strlen(argv[i]);
-            if (len>4 && (argv[i][len-4])== '.' && tolower(argv[i][len-3])== 'a' && tolower(argv[i][len-2])== 'v' && tolower(argv[i][len-1])== 's')
-            {
-                infile=argv[i];
-                break;
-            }
-            else if((len==12)&&(strcmp(argv[i], "--interlaced")==0))
-            {
-                fprintf( stderr, "--interlaced found.\n");
-                b_interlaced=1;
-            }
-        }
-        if (!infile)
-        {
-            fprintf( stderr, "No avs script found.\n");
-            return -1;
-        }
+	if (argc == 1)
+	{
+		showhelp(argv[0]);
+		return -1;
+	}
+	int result = 0;
+	char *cmd;
+	
+	cmd_t *cmd_options = (cmd_t *)malloc(sizeof(cmd_t));
+	ZeroMemory(cmd_options, sizeof(cmd_t));
 
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--qpfile", 8) )
-            {
-                b_qp = 1;
-                break;
-            }
-        }
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--tcfile-in", 11) )
-            {
-                b_tc = 1;
-                break;
-            }
-        }
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--seek-mode", 11) )
-            {
-                if( !strcmp(argv[i], "--seek-mode") )
-                {
-                    if( !strcasecmp(argv[i+1], "safe" ) )
-                    {
-                        b_seek_safe = 1;
-                    }
-                    else if( !strcasecmp(argv[i+1], "fast" ) )
-                    {
-                        b_seek_safe = 0;
-                    }
-                    else
-                    {
-                        fprintf( stderr, "avs4x264 [error]: invalid seek-mode\n" );
-                        return -1;
-                    }
-                    for (;i<argc-2;i++)
-                        argv[i] = argv[i+2];
-                    argc -= 2;
-                }
-                else if( !strncmp(argv[i], "--seek-mode=", 12) )
-                {
-                    if( !strcasecmp(argv[i]+12, "safe" ) )
-                    {
-                        b_seek_safe = 1;
-                    }
-                    else if( !strcasecmp(argv[i]+12, "fast" ) )
-                    {
-                        b_seek_safe = 0;
-                    }
-                    else
-                    {
-                        fprintf( stderr, "avs4x264 [error]: invalid seek-mode\n" );
-                        return -1;
-                    }
-                    for (;i<argc-1;i++)
-                        argv[i] = argv[i+1];
-                    argc--;
-                }
-                break;
-            }
-        }
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--seek", 6) )
-            {
-                if( !strcmp(argv[i], "--seek") )
-                {
-                    i_frame_start = atoi(argv[i+1]);
-                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
-                    {
-                        for (;i<argc-2;i++)
-                            argv[i] = argv[i+2];
-                        argc -= 2;
-                    }
-                }
-                else
-                {
-                    i_frame_start = atoi(argv[i]+7);
-                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
-                    {
-                        for (;i<argc-1;i++)
-                            argv[i] = argv[i+1];
-                        argc -= 1;
-                    }
-                }
-                break;
-            }
-        }
+	x264_cmd_t *x264cmd_options = (x264_cmd_t *)malloc(sizeof(x264_cmd_t));
+	ZeroMemory(x264cmd_options, sizeof(x264_cmd_t));
 
-        //avs open
-        if( avs_load_library( &avs_h ) )
-        {
-           fprintf( stderr, "avs [error]: failed to load avisynth\n" );
-           return -1;
-        }
-        avs_h.env = avs_h.func.avs_create_script_environment( AVS_INTERFACE_YV12 );
-        if( !avs_h.env )
-        {
-           fprintf( stderr, "avs [error]: failed to initiate avisynth\n" );
-           goto avs_fail;
-        }
-        arg = avs_new_value_string( infile );
+	parse_opt(&argc, argv, cmd_options);
+	if (cmd_options->InFile == 0)
+	{
+		fprintf( stderr, "No avs script found.\n");
+		return -1;
+	}
+	if (cmd_options->Interlaced)
+		fprintf( stderr, "--interlaced found.\n");
 
-        res = avs_h.func.avs_invoke( avs_h.env, "Import", arg, NULL );
-        if( avs_is_error( res ) )
-        {
-            fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
-            goto avs_fail;
-        }
+	video_info_t *vi = (video_info_t *) malloc(sizeof(video_info_t));
+	ZeroMemory(vi, sizeof(video_info_t));
+	vi->infile = cmd_options->InFile;
+	
+	pipe_info_t *pi = (pipe_info_t *) malloc(sizeof(pipe_info_t));
+	ZeroMemory(pi, sizeof(pipe_info_t));
 
-        /* check if the user is using a multi-threaded script and apply distributor if necessary.
-           adapted from avisynth's vfw interface */
-        AVS_Value mt_test = avs_h.func.avs_invoke( avs_h.env, "GetMTMode", avs_new_value_bool( 0 ), NULL );
-        int mt_mode = avs_is_int( mt_test ) ? avs_as_int( mt_test ) : 0;
-        avs_h.func.avs_release_value( mt_test );
-        if( mt_mode > 0 && mt_mode < 5 )
-        {
-            AVS_Value temp = avs_h.func.avs_invoke( avs_h.env, "Distributor", res, NULL );
-            avs_h.func.avs_release_value( res );
-            res = temp;
-        }
+	if (cmd_options->Seek > 0)
+	{
+		vi->i_frame_start = cmd_options->Seek;
+		if (cmd_options->TCFile || cmd_options->QPFile || cmd_options->SeekSafe)
+		{
+			char str[1024];
+			sprintf(str, " --seek %d ", cmd_options->Seek);
+			strcat(x264cmd_options->extra, str);
+		}
+	}
+	
+	// change affinity before open avs file: much faster on multicore cpu
+	if(cmd_options->Affinity)
+		SetProcessAffinityMask(GetCurrentProcess(), cmd_options->Affinity);
 
-        if( !avs_is_clip( res ) )
-        {
-            fprintf( stderr, "avs [error]: `%s' didn't return a video clip\n", infile );
-            goto avs_fail;
-        }
-        avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
-        avs_version = get_avs_version( avs_h );
-        fprintf( stdout, "avs [info]: Avisynth version: %.2f\n", avs_version );
-        const AVS_VideoInfo *vi = avs_h.func.avs_get_video_info( avs_h.clip );
-        if( !avs_has_video( vi ) )
-        {
-            fprintf( stderr, "avs [error]: `%s' has no video data\n", infile );
-            goto avs_fail;
-        }
-        if( vi->width&1 || vi->height&1 )
-        {
-            fprintf( stderr, "avs [error]: input clip width or height not divisible by 2 (%dx%d)\n",
-                     vi->width, vi->height );
-            goto avs_fail;
-        }
-        if ( avs_is_yv12( vi ) )
-        {
-            csp = "i420";
-            chroma_width = vi->width >> 1;
-            chroma_height = vi->height >> 1;
-            fprintf( stdout, "avs [info]: Video colorspace: YV12\n" );
-        }
-        else if ( avs_is_yv24( vi ) )
-        {
-            csp = "i444";
-            chroma_width = vi->width;
-            chroma_height = vi->height;
-            fprintf( stdout, "avs [info]: Video colorspace: YV24\n" );
-        }
-        else if ( avs_is_yv16( vi ) )
-        {
-            csp = "i422";
-            chroma_width = vi->width >> 1;
-            chroma_height = vi->height;
-            fprintf( stdout, "avs [info]: Video colorspace: YV16\n" );
-        }
-        else
-        {
-            fprintf( stderr, "avs [warning]: Converting input clip to YV12\n" );
-            const char *arg_name[2] = { NULL, "interlaced" };
-            AVS_Value arg_arr[2] = { res, avs_new_value_bool( b_interlaced ) };
-            AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "ConvertToYV12", avs_new_value_array( arg_arr, 2 ), arg_name );
-            if( avs_is_error( res2 ) )
-            {
-                fprintf( stderr, "avs [error]: Couldn't convert input clip to YV12\n" );
-                goto avs_fail;
-            }
-            res = update_clip( avs_h, vi, res2, res );
-            csp = "i420";
-            chroma_width = vi->width >> 1;
-            chroma_height = vi->height >> 1;
-        }
+	// avs open
+	result = LoadAVSFile(vi);
+	if (result == ERR_AVS_NOTFOUND)
+		return -1;
+	if (result == ERR_AVS_FAIL)
+		goto avs_fail;
 
-        if ( !b_seek_safe && i_frame_start && ( b_qp || b_tc ) )
-        {
-            fprintf( stdout, "avs4x264 [info]: seek-mode=fast with qpfile or timecodes in, freeze first %d %s for fast processing\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
-            AVS_Value arg_arr[4] = { res, avs_new_value_int( 0 ), avs_new_value_int( i_frame_start ), avs_new_value_int( i_frame_start ) };
-            AVS_Value res2 = avs_h.func.avs_invoke( avs_h.env, "FreezeFrame", avs_new_value_array( arg_arr, 4 ), NULL );
-            if( avs_is_error( res2 ) )
-            {
-                fprintf( stderr, "avs [error]: Couldn't freeze first %d %s\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
-                goto avs_fail;
-            }
-            res = update_clip( avs_h, vi, res2, res );
-        }
+	if (cmd_options->Frames)
+		vi->i_frame_total = cmd_options->Frames + vi->i_frame_start;
 
-        avs_h.func.avs_release_value( res );
+	if ( vi->num_frames < vi->i_frame_total )
+	{
+		fprintf( stderr, "avs4x264 [warning]: %d frame(s) requested, but %d frame(s) given\n", vi->i_frame_total, vi->num_frames );
+		vi->i_frame_total = vi->num_frames;
+	}
 
-        i_width = vi->width;
-        i_height = vi->height;
-        i_fps_num = vi->fps_numerator;
-        i_fps_den = vi->fps_denominator;
-        i_frame_total = vi->num_frames;
-        fprintf( stdout, "avs [info]: Video resolution: %dx%d\n"
-                         "avs [info]: Video framerate: %d/%d\n"
-                         "avs [info]: Video framecount: %d\n",
-                 vi->width, vi->height, vi->fps_numerator, vi->fps_denominator, vi->num_frames );
+	vi->i_encode_frames = vi->i_frame_total - vi->i_frame_start;
 
-        //execute the commandline
-        h_process = GetCurrentProcess();
-        h_stdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-        h_stdErr = GetStdHandle(STD_ERROR_HANDLE);
+	if ( cmd_options->TCFile || cmd_options->QPFile || cmd_options->SeekSafe )
+		/* don't skip the number --seek defines if timecodes/qpfile presents or seek-mode=safe */
+		vi->i_frame_start = 0;
+	else if ( vi->i_frame_start != 0 )
+		fprintf( stderr, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping\n", vi->i_frame_start );
 
-        if (h_stdOut==INVALID_HANDLE_VALUE || h_stdErr==INVALID_HANDLE_VALUE)
-        {
-            fprintf( stderr, "Error: Couldn\'t get standard handles!");
-            goto avs_fail;
-        }
+	x264cmd_options->argc = argc;
+	x264cmd_options->argv = argv;
+	
+	cmd = x264_generate_command(cmd_options, x264cmd_options, vi);
+	fprintf( stderr, "avs4x264 [info]: %s\n", cmd);
+	fflush( stderr );
 
-        saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-        saAttr.bInheritHandle = TRUE;
-        saAttr.lpSecurityDescriptor = NULL;
+	result = CreateX264Process(cmd, vi, pi);
+	if(result == ERR_AVS_FAIL)
+		goto avs_fail;
+	if(result == ERR_PIPE_FAIL)
+		goto pipe_fail;
+	free(cmd);
 
-        if (!CreatePipe(&h_pipeRead, &h_pipeWrite, &saAttr, PIPE_BUFFER_SIZE))
-        {
-            fprintf( stderr, "Error: Pipe creation failed!");
-            goto avs_fail;
-        }
+	result = WritePipeLoop(cmd_options->PipeMT ? &_mt_writefile : &_writefile, vi, pi);
+	if(result == ERR_PROCESS_FAIL)
+		goto process_fail;
+	OBuffer.size++;
+	
+	if(cmd_options->PipeMT)
+	{
+		// more cleanups
+		if(OBuffer.size > 0)
+			fprintf( stderr, "avs4x264 [info]: Waiting background worker to finish his job...\n" );
+		
+		while(OBuffer.size > 0)
+		{
+			fprintf( stderr, "\t\t\t\t\t\t\t\t\t\t Buffer: %d <-- \r", OBuffer.size);
+			fflush(stderr);
+			_sleep(1);
+		}
+		OBuffer.size = -1; // and sub-thread will exit automatically.
+	}
 
-        if ( !SetHandleInformation(h_pipeWrite, HANDLE_FLAG_INHERIT, 0) )
-        {
-            fprintf( stderr, "Error: SetHandleInformation");
-            goto pipe_fail;
-        }
+	//avs related
+	avs_hnd_t avs_h;
+	DWORD exitcode = 0;
+	
 
-        ZeroMemory( &pi_info, sizeof(PROCESS_INFORMATION) );
-        ZeroMemory( &si_info, sizeof(STARTUPINFO) );
-        si_info.cb = sizeof(STARTUPINFO);
-        si_info.dwFlags = STARTF_USESTDHANDLES;
-        si_info.hStdInput = h_pipeRead;
-        si_info.hStdOutput = h_stdOut;
-        si_info.hStdError = h_stdErr;
+	//close & cleanup
+process_fail:// everything created
+	CloseHandle(pi->h_pipeWrite);// h_pipeRead already closed
+	WaitForSingleObject(pi->pi_info.hProcess, INFINITE);
+	GetExitCodeProcess(pi->pi_info.hProcess, &exitcode);
+	CloseHandle(pi->pi_info.hProcess);
+	goto avs_cleanup;// pipes already closed
+pipe_fail://pipe created but failed after that
+	CloseHandle(pi->h_pipeRead);
+	CloseHandle(pi->h_pipeWrite);
+avs_fail://avs enviormnet created but failed after that
+	exitcode = -1;
+avs_cleanup:
+	avs_h.func.avs_release_clip( avs_h.clip );
+	if ( avs_h.func.avs_delete_script_environment )
+		avs_h.func.avs_delete_script_environment( avs_h.env );
+	FreeLibrary( avs_h.library );
 
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--frames", 8) )
-            {
-                if( !strcmp(argv[i], "--frames") )
-                {
-                    i_frame_total = atoi(argv[i+1]);
-                    for (;i<argc-2;i++)
-                        argv[i] = argv[i+2];
-                    argc -= 2;
-                }
-                else
-                {
-                    i_frame_total = atoi(argv[i]+9);
-                    for (;i<argc-1;i++)
-                        argv[i] = argv[i+1];
-                    argc -= 1;
-                }
-                i_frame_total += i_frame_start; /* ending frame should add offset of i_frame_start, not needed if not set as will be clamped */
-                break;
-            }
-        }
+	return exitcode;
+}
 
-        if ( vi->num_frames < i_frame_total )
-        {
-            fprintf( stderr, "avs4x264 [warning]: x264 is trying to encode until frame %d, but input clip has only %d %s\n",
-                     i_frame_total, vi->num_frames, vi->num_frames > 1 ? "frames" : "frame" );
-            i_frame_total = vi->num_frames;
-        }
-
-        i_encode_frames = i_frame_total - i_frame_start;
-
-        if ( b_tc || b_qp || b_seek_safe )      /* don't skip the number --seek defines if has timecodes/qpfile or seek-mode=safe */
-        {
-            i_frame_start = 0;
-        }
-        else if ( i_frame_start != 0 )
-        {
-            fprintf( stdout, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping\n", i_frame_start );
-        }
-
-        cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp, b_tc, i_encode_frames );
-        fprintf( stdout, "avs4x264 [info]: %s\n", cmd);
-
-        if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
-        {
-            fprintf( stderr, "Error: Failed to create process <%d>!", (int)GetLastError());
-            free(cmd);
-            goto pipe_fail;
-        }
-        //cleanup before writing to pipe
-        CloseHandle(h_pipeRead);
-        free(cmd);
-
-        //write
-        for ( frame=i_frame_start; frame<i_frame_total; frame++ )
-        {
-            frm = avs_h.func.avs_get_frame( avs_h.clip, frame );
-            const char *err = avs_h.func.avs_clip_get_error( avs_h.clip );
-            if( err )
-            {
-                fprintf( stderr, "avs [error]: %s occurred while reading frame %d\n", err, frame );
-                goto process_fail;
-            }            
-            planeY = (char*)(frm->vfb->data + frm->offset);
-            for (j=0; j<i_height; j++){
-               if( !WriteFile(h_pipeWrite, planeY, i_width, (PDWORD)&i, NULL) )
-               {
-                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264 closed)\n", frame );
-                   goto process_fail;
-               }
-               planeY += frm->pitch;
-            }
-            planeU = (char*)(frm->vfb->data + frm->offsetU);
-            for (j=0; j<chroma_height; j++){
-               if( !WriteFile(h_pipeWrite, planeU, chroma_width, (PDWORD)&i, NULL) )
-               {
-                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264 closed)\n", frame );
-                   goto process_fail;
-               }
-               planeU += frm->pitchUV;
-            } 
-            planeV = (char*)(frm->vfb->data + frm->offsetV);
-            for (j=0; j<chroma_height; j++){
-               if( !WriteFile(h_pipeWrite, planeV, chroma_width, (PDWORD)&i, NULL) )
-               {
-                   fprintf( stderr, "avs [error]: Error occurred while writing frame %d\n(Maybe x264 closed)\n", frame );
-                   goto process_fail;
-               }
-               planeV += frm->pitchUV;
-            } 
-            avs_h.func.avs_release_video_frame( frm );
-        }
-        //close & cleanup
-    process_fail:// everything created
-        CloseHandle(h_pipeWrite);// h_pipeRead already closed
-        WaitForSingleObject(pi_info.hProcess, INFINITE);
-        GetExitCodeProcess(pi_info.hProcess,&exitcode);
-        CloseHandle(pi_info.hProcess);
-        goto avs_cleanup;// pipes already closed
-    pipe_fail://pipe created but failed after that
-        CloseHandle(h_pipeRead);
-        CloseHandle(h_pipeWrite);
-    avs_fail://avs enviormnet created but failed after that
-        exitcode = -1;
-    avs_cleanup:
-        avs_h.func.avs_release_clip( avs_h.clip );
-        if( avs_h.func.avs_delete_script_environment )
-            avs_h.func.avs_delete_script_environment( avs_h.env );
-        FreeLibrary( avs_h.library );
-    }
-    else
-    {
-        printf("\n"
-               "avs4x264mod - simple Avisynth pipe tool for x264\n"
-               "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
-        printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
-        printf("Options:\n");
-        printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
-        printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
-               "                                - fast: skip process of frames before seek number as x264 does if no --tcfile-in/--qpfile\n"
-               "                                        otherwise freeze frames before seek number to skip process but keep frame number\n"
-               "                                        ( x264 treats tcfile-in as timecodes of input video, not output video )\n"
-               "                                        normally safe enough for most randomly seekable AviSynth scripts\n"
-               "                                        may break scripts which can only be linearly seeked, like TDecimate(mode=3)\n"
-               "                                - safe: process and deliver every frame to x264\n"
-               "                                        should give accurate result with every AviSynth script\n"
-               "                                        significantly slower when the process is heavy\n");
-        return -1;
-    }
-    return exitcode;
+void showhelp(char *prog)
+{
+	printf("\n"
+	       "avs4x264mode - simple Avisynth pipe tool for x264\n"
+	       "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
+	printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , prog);
+	printf("Options:\n");
+	printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
+	printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
+	       "               - fast: skip process of frames before seek number as x264 does if no --tcfile-in/--qpfile\n"
+	       "                       otherwise freeze frames before seek number to skip process but keep frame number\n"
+	       "                       ( x264 treats tcfile-in as timecodes of input video, not output video )\n"
+	       "                       normally safe enough for most randomly seekable AviSynth scripts\n"
+	       "                       may break scripts which can only be linearly seeked, like TDecimate(mode=3)\n"
+	       "               - safe: process and deliver every frame to x264\n"
+	       "                       should give accurate result with every AviSynth script\n"
+	       "                       significantly slower when the process is heavy\n");
 }
