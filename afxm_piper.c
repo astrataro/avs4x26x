@@ -13,10 +13,14 @@ int _writefile(HANDLE hFile, char *lpBuffer, int nNumberOfBytesToWrite)
 int _mt_writefile(HANDLE hFile, char *lpBuffer, int nNumberOfBytesToWrite)
 {
 	if (OBuffer.size > OBuffer.capacity >> 1)
-		usleep((OBuffer.size << 10) - 250000);
+	{
+		int delay = OBuffer.size << 2;
+		delay = delay > 128 ? delay - 64 : 64;
+		Sleep(delay);
+	}
 	while (OBuffer.size >= OBuffer.capacity)
 	{
-		usleep(500000);
+		Sleep(512);
 	}
 	node_t *lnk = OBuffer.dynarray + OBuffer.tail;
 	lnk->data = lpBuffer;
@@ -114,9 +118,18 @@ int CreateX264Process(char *cmd, cmd_t *cmdopts, video_info_t *VideoInfo, pipe_i
 	//cleanup before writing to pipe
 	CloseHandle(PipeInfo->h_pipeRead);
 	free(cmd);
-
+	/*
+	if(cmdopts->Affinity)
+	{
+		fprintf( stderr, "avs4x264 [info]: My CPU affinity set to %d\n", cmdopts->Affinity);
+		SetProcessAffinityMask(GetCurrentProcess(), cmdopts->Affinity);
+	}
+	*/
 	if (cmdopts->x264Affinity)
+	{
+		fprintf( stderr, "avs4x264 [info]: x264 CPU affinity set to %d\n", cmdopts->x264Affinity);
 		SetProcessAffinityMask(PipeInfo->pi_info.hProcess, cmdopts->x264Affinity);
+	}
 
 	if (cmdopts->PipeMT)
 	{
@@ -132,7 +145,7 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 	char *planeY, *planeU, *planeV;
 	int j;
 	//prepare for writing
-	int buflength = VideoInfo->i_width * VideoInfo->i_height + h_half * w_half  * 2;
+	int buflength = VideoInfo->i_width * VideoInfo->i_height + VideoInfo->chroma_width * VideoInfo->chroma_height  * 2;
 	char title[1024], szbuffer[256];
 	if (PipeInfo->BufferSize == 0)
 		/* Auto:
@@ -191,16 +204,16 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 				bufpos += VideoInfo->i_width;
 				planeY += frm->pitch;
 			}
-			for (j = 0; j < h_half; j++)
+			for (j = 0; j < VideoInfo->chroma_height; j++)
 			{
-				memcpy(bufpos, planeU, w_half);
-				bufpos += w_half;
+				memcpy(bufpos, planeU, VideoInfo->chroma_width);
+				bufpos += VideoInfo->chroma_width;
 				planeU += frm->pitchUV;
 			}
-			for (j = 0; j < h_half; j++)
+			for (j = 0; j < VideoInfo->chroma_height; j++)
 			{
-				memcpy(bufpos, planeV, w_half);
-				bufpos += w_half;
+				memcpy(bufpos, planeV, VideoInfo->chroma_width);
+				bufpos += VideoInfo->chroma_width;
 				planeV += frm->pitchUV;
 			}
 			//assert(bufpos - bufyuv == buflength);

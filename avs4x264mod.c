@@ -64,10 +64,6 @@ int main(int argc, char *argv[])
 			strcat(x264cmd_options->extra, str);
 		}
 	}
-	
-	// change affinity before open avs file: much faster on multicore cpu
-	if(cmd_options->Affinity)
-		SetProcessAffinityMask(GetCurrentProcess(), cmd_options->Affinity);
 
 	// avs open
 	result = LoadAVSFile(vi);
@@ -76,6 +72,13 @@ int main(int argc, char *argv[])
 	if (result == ERR_AVS_FAIL)
 		goto avs_fail;
 
+	// change affinity before open avs file: much faster on multicore cpu
+	if(cmd_options->Affinity)
+	{
+		fprintf( stderr, "avs4x264 [info]: My CPU affinity set to %d\n", cmd_options->Affinity);
+		SetProcessAffinityMask(GetCurrentProcess(), cmd_options->Affinity);
+	}
+	
 	if (cmd_options->Frames)
 		vi->i_frame_total = cmd_options->Frames + vi->i_frame_start;
 
@@ -100,14 +103,14 @@ int main(int argc, char *argv[])
 	fprintf( stderr, "avs4x264 [info]: %s\n", cmd);
 	fflush( stderr );
 
-	result = CreateX264Process(cmd, vi, pi);
+	result = CreateX264Process(cmd, cmd_options, vi, pi);
 	if(result == ERR_AVS_FAIL)
 		goto avs_fail;
 	if(result == ERR_PIPE_FAIL)
 		goto pipe_fail;
 	free(cmd);
 
-	result = WritePipeLoop(cmd_options->PipeMT ? &_mt_writefile : &_writefile, vi, pi);
+	result = WritePipeLoop(cmd_options->PipeMT ? &_mt_writefile : &_writefile, cmd_options, vi, pi);
 	if(result == ERR_PROCESS_FAIL)
 		goto process_fail;
 	OBuffer.size++;
@@ -122,13 +125,12 @@ int main(int argc, char *argv[])
 		{
 			fprintf( stderr, "\t\t\t\t\t\t\t\t\t\t Buffer: %d <-- \r", OBuffer.size);
 			fflush(stderr);
-			_sleep(1);
+			Sleep(1000);
 		}
 		OBuffer.size = -1; // and sub-thread will exit automatically.
 	}
-
+	
 	//avs related
-	avs_hnd_t avs_h;
 	DWORD exitcode = 0;
 	
 
@@ -145,10 +147,7 @@ pipe_fail://pipe created but failed after that
 avs_fail://avs enviormnet created but failed after that
 	exitcode = -1;
 avs_cleanup:
-	avs_h.func.avs_release_clip( avs_h.clip );
-	if ( avs_h.func.avs_delete_script_environment )
-		avs_h.func.avs_delete_script_environment( avs_h.env );
-	FreeLibrary( avs_h.library );
+	avs_cleanup();
 
 	return exitcode;
 }
@@ -170,4 +169,15 @@ void showhelp(char *prog)
 	       "               - safe: process and deliver every frame to x264\n"
 	       "                       should give accurate result with every AviSynth script\n"
 	       "                       significantly slower when the process is heavy\n");
+		puts(" --x264-affinity <cpu>      Set Process Affinity for x264");
+		puts(" --affinity <cpu>           Set Process Affinity for the piper");
+		puts(" --pipe-mt                  Seperated thread for pipe buffer");
+		puts(" --pipe-buffer              Pipe buffer frames [Default: 512, 1024, 2048 depends]");
+		puts("");
+		puts("   Affinity is in decimal (eg. 63 for core 0~5, 1+2+4+8+16+32)");
+		puts("");
+		puts("This program is free software; you can redistribute it and/or modify");
+		puts("it under the terms of the GNU General Public License as published by");
+		puts("the Free Software Foundation; either version 2 of the License, or");
+		puts("(at your option) any later version.");
 }

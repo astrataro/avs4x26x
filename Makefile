@@ -15,6 +15,8 @@ version.h: .git/FETCH_HEAD
 	VER=`git rev-list HEAD | wc -l`
 	echo "#define VERSION_GIT $VER" > version.h
 
+test:
+	./avs4x264mode --pipe-mt --pipe-buffer 4096 --affinity 1 --x264-affinity 2 --crf 24 -o test.mp4 test.avs
 
 clean:
 	del *.o

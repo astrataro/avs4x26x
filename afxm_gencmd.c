@@ -24,46 +24,11 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 		*buf = 0;
 	}
 	cmd = malloc(8192);
+	if(cmdopt->X264Path)
+		x264_binary = cmdopt->X264Path;
 	
-	for (i = 1; i < xcmdopt->argc; i++)
-	{
-		if ( !strncmp(xcmdopt->argv[i], "--x264-binary", 13) || !strncmp(xcmdopt->argv[i], "-L", 2) )
-		{
-			if ( !strcmp(xcmdopt->argv[i], "--x264-binary") || !strcmp(xcmdopt->argv[i], "-L") )
-			{
-				x264_binary = xcmdopt->argv[i + 1];
-				for (; i < xcmdopt->argc - 2; i++)
-					xcmdopt->argv[i] = xcmdopt->argv[i + 2];
-				xcmdopt->argc -= 2;
-			}
-			else if ( !strncmp(xcmdopt->argv[i], "--x264-binary=", 14) )
-			{
-				x264_binary = xcmdopt->argv[i] + 14;
-				for (; i < xcmdopt->argc - 1; i++)
-					xcmdopt->argv[i] = xcmdopt->argv[i + 1];
-				xcmdopt->argc--;
-			}
-			else if ( !strncmp(xcmdopt->argv[i], "-L=", 3) )
-			{
-				x264_binary = xcmdopt->argv[i] + 3;
-				for (; i < xcmdopt->argc - 1; i++)
-					xcmdopt->argv[i] = xcmdopt->argv[i + 1];
-				xcmdopt->argc--;
-			}
-			else                           /* else xcmdopt->argv[i] should have structure like -Lx264 */
-			{
-				x264_binary = xcmdopt->argv[i] + 2;
-				for (; i < xcmdopt->argc - 1; i++)
-					xcmdopt->argv[i] = xcmdopt->argv[i + 1];
-				xcmdopt->argc--;
-			}
-			break;
-		}
-	}
 	if ( cmdopt->TCFile )
-	{
 		b_add_fps = 0;
-	}
 	else
 	{
 		for (i = 1; i < xcmdopt->argc; i++)

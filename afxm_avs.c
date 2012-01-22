@@ -184,3 +184,11 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 	         "avs [info]: Video framecount: %d\n",
 	         vi->width, vi->height, vi->fps_numerator, vi->fps_denominator, vi->num_frames );
 }
+
+void avs_cleanup()
+{
+	avs_h.func.avs_release_clip( avs_h.clip );
+	if ( avs_h.func.avs_delete_script_environment )
+		avs_h.func.avs_delete_script_environment( avs_h.env );
+	FreeLibrary( avs_h.library );
+}
