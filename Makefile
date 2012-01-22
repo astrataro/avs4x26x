@@ -19,4 +19,4 @@ test:
 	./avs4x264mod --pipe-mt --pipe-buffer 4096 --affinity 1 --x264-affinity 2 --crf 24 -o test.mp4 test.avs
 
 clean:
-	del *.o
+	rm -f *.o version.h avs4x264mod.exe

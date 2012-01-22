@@ -155,7 +155,7 @@ avs_cleanup:
 void showhelp(char *prog)
 {
 	printf("\n"
-	       "avs4x264mode - simple Avisynth pipe tool for x264\n"
+	       "avs4x264mod - simple Avisynth pipe tool for x264\n"
 	       "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
 	printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , prog);
 	printf("Options:\n");
