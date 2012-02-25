@@ -63,7 +63,7 @@ AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, 
 
 int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 {
-	int avs_version;
+	float avs_version;
 	//avs open
 	if ( avs_load_library( &avs_h ) )
 	{
