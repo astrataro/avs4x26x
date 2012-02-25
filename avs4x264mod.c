@@ -24,6 +24,9 @@ extern buffer_t OBuffer;
 
 int main(int argc, char *argv[])
 {
+	printf("\n"
+	       "avs4x264mod - simple Avisynth pipe tool for x264\n"
+	       "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
 	if (argc == 1)
 	{
 		showhelp(argv[0]);
@@ -41,11 +44,11 @@ int main(int argc, char *argv[])
 	parse_opt(&argc, argv, cmd_options);
 	if (cmd_options->InFile == 0)
 	{
-		fprintf( stderr, "No avs script found.\n");
+		color_printf( "No avs script found.\n");
 		return -1;
 	}
 	if (cmd_options->Interlaced)
-		fprintf( stderr, "--interlaced found.\n");
+		color_printf( "--interlaced found.\n");
 
 	video_info_t *vi = (video_info_t *) malloc(sizeof(video_info_t));
 	ZeroMemory(vi, sizeof(video_info_t));
@@ -65,26 +68,26 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// change affinity before open avs file: much faster on multicore cpu
+	if(cmd_options->Affinity)
+	{
+		color_printf( "avs4x264 [info]: My CPU affinity set to %d\n", cmd_options->Affinity);
+		SetProcessAffinityMask(GetCurrentProcess(), cmd_options->Affinity);
+	}
+
 	// avs open
-	result = LoadAVSFile(vi);
+	result = LoadAVSFile(vi, cmd_options);
 	if (result == ERR_AVS_NOTFOUND)
 		return -1;
 	if (result == ERR_AVS_FAIL)
 		goto avs_fail;
-
-	// change affinity before open avs file: much faster on multicore cpu
-	if(cmd_options->Affinity)
-	{
-		fprintf( stderr, "avs4x264 [info]: My CPU affinity set to %d\n", cmd_options->Affinity);
-		SetProcessAffinityMask(GetCurrentProcess(), cmd_options->Affinity);
-	}
 	
 	if (cmd_options->Frames)
 		vi->i_frame_total = cmd_options->Frames + vi->i_frame_start;
 
 	if ( vi->num_frames < vi->i_frame_total )
 	{
-		fprintf( stderr, "avs4x264 [warning]: %d frame(s) requested, but %d frame(s) given\n", vi->i_frame_total, vi->num_frames );
+		color_printf( "avs4x264 [warning]: %d frame(s) requested, but %d frame(s) given\n", vi->i_frame_total, vi->num_frames );
 		vi->i_frame_total = vi->num_frames;
 	}
 
@@ -94,14 +97,13 @@ int main(int argc, char *argv[])
 		/* don't skip the number --seek defines if timecodes/qpfile presents or seek-mode=safe */
 		vi->i_frame_start = 0;
 	else if ( vi->i_frame_start != 0 )
-		fprintf( stderr, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping\n", vi->i_frame_start );
+		color_printf( "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping\n", vi->i_frame_start );
 
 	x264cmd_options->argc = argc;
 	x264cmd_options->argv = argv;
 	
 	cmd = x264_generate_command(cmd_options, x264cmd_options, vi);
-	fprintf( stderr, "avs4x264 [info]: %s\n", cmd);
-	fflush( stderr );
+	color_printf( "avs4x264 [info]: %s\n", cmd);
 
 	result = CreateX264Process(cmd, cmd_options, vi, pi);
 	if(result == ERR_AVS_FAIL)
@@ -119,11 +121,11 @@ int main(int argc, char *argv[])
 	{
 		// more cleanups
 		if(OBuffer.size > 0)
-			fprintf( stderr, "avs4x264 [info]: Waiting background worker to finish his job...\n" );
+			color_printf( "avs4x264 [info]: Waiting background worker to finish his job...\n" );
 		
 		while(OBuffer.size > 0)
 		{
-			fprintf( stderr, "\t\t\t\t\t\t\t\t\t\t Buffer: %d <-- \r", OBuffer.size);
+			color_printf( "\t\t\t\t\t\t\t\t\t\t Buffer: %d <-- \r", OBuffer.size);
 			fflush(stderr);
 			Sleep(1000);
 		}
@@ -154,9 +156,6 @@ avs_cleanup:
 
 void showhelp(char *prog)
 {
-	printf("\n"
-	       "avs4x264mod - simple Avisynth pipe tool for x264\n"
-	       "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
 	printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , prog);
 	printf("Options:\n");
 	printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);

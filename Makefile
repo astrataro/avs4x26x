@@ -1,5 +1,5 @@
-CC=gcc -s -O3 -c -Wl,--large-address-aware
-objs=avs4x264mod.o afxm_avs.o afxm_piper.o afxm_gencmd.o afxm_getopt.o
+CC=gcc -s -O3 -g -c -Wl,--large-address-aware
+objs=avs4x264mod.o afxm_avs.o afxm_piper.o afxm_gencmd.o afxm_getopt.o afxm_consolewrap.o
 
 all: avs4x264mod.exe
 

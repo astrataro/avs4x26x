@@ -110,14 +110,13 @@ int CreateX264Process(char *cmd, cmd_t *cmdopts, video_info_t *VideoInfo, pipe_i
 
 	if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &PipeInfo->si_info, &PipeInfo->pi_info))
 	{
-		fprintf( stderr, "Error: Failed to create process <%d>!", (int)GetLastError());
+		color_printf( "Error: Failed to create process <%d>!\n", (int)GetLastError());
 		free(cmd);
 		return ERR_PIPE_FAIL;
 	}
 
 	//cleanup before writing to pipe
 	CloseHandle(PipeInfo->h_pipeRead);
-	free(cmd);
 	/*
 	if(cmdopts->Affinity)
 	{
@@ -127,7 +126,7 @@ int CreateX264Process(char *cmd, cmd_t *cmdopts, video_info_t *VideoInfo, pipe_i
 	*/
 	if (cmdopts->x264Affinity)
 	{
-		fprintf( stderr, "avs4x264 [info]: x264 CPU affinity set to %d\n", cmdopts->x264Affinity);
+		color_printf( "avs4x264 [info]: x264 CPU affinity set to %d\n", cmdopts->x264Affinity);
 		SetProcessAffinityMask(PipeInfo->pi_info.hProcess, cmdopts->x264Affinity);
 	}
 
@@ -154,6 +153,10 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 			<1M (~848x480 = 610K) 1024x = 596MiB
 		*/
 		PipeInfo->BufferSize = buflength > 2097152 ? 0x100 : (buflength > 1048576 ? 0x200 : 0x400);
+	//if (PipeInfo->BufferSize * (buflength >> 10) > (3072 * 1024))
+	//	PipeInfo->BufferSize = (1024 * 1024 * 1024) / buflength * 3;
+	//color_printf("bf=%d\n", PipeInfo->BufferSize);
+	//fflush(stderr);
 
 	if (cmdopts->PipeMT)
 	{
@@ -163,8 +166,8 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 		OBuffer.head = OBuffer.tail = 0;
 
 		OBuffer.framesize = buflength;
-		fprintf( stderr, "avs4x264 [info]: Multi-threaded pipe buffer enabled.\n");
-		fprintf( stderr, "avs4x264 [info]: Buffer size set to %dx%d\n", OBuffer.capacity, OBuffer.framesize);
+		color_printf( "avs4x264 [info]: Multi-threaded pipe buffer enabled.\n");
+		color_printf( "avs4x264 [info]: Buffer size set to %dx%d\n", OBuffer.capacity, OBuffer.framesize);
 		fflush(stderr);
 	}
 
@@ -173,13 +176,7 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 	{
 		if (cmdopts->PipeMT && (frame & 1))
 		{
-			GetConsoleTitle(title, 1024);
-			if (!strchr(title, '$'))
-			{
-				sprintf(szbuffer, " $ Buffer: %d/%d (%d MB)", OBuffer.size, OBuffer.capacity, (OBuffer.framesize * OBuffer.size) >> 20);
-				strcat(title, szbuffer);
-				SetConsoleTitle(title);
-			}
+			title_printf("Buffer: %d/%d (%d MB)", OBuffer.size, OBuffer.capacity, (OBuffer.framesize * OBuffer.size) >> 20);
 		}
 
 		frm = avs_h.func.avs_get_frame( avs_h.clip, frame );
@@ -187,7 +184,7 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 
 		if ( err )
 		{
-			fprintf( stderr, "avs [error]: %s occurred while reading frame %d\n", err, frame );
+			color_printf( "avs [error]: %s occurred while reading frame %d\n", err, frame );
 			return ERR_PROCESS_FAIL;
 		}
 		planeY = (char *)(frm->vfb->data + frm->offset);
