@@ -18,5 +18,8 @@ version.h: .git/FETCH_HEAD
 test:
 	./avs4x264mod --pipe-mt --pipe-buffer 4096 --affinity 1 --x264-affinity 2 --crf 24 -o test.mp4 test.avs
 
+testhd:
+	./avs4x264mod --pipe-mt --pipe-buffer 64 --affinity 1 --x264-affinity 2 --crf 24 --input-depth 10 -o testhd.mp4 testhd.avs
+
 clean:
 	rm -f *.o version.h avs4x264mod.exe

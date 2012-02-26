@@ -70,6 +70,7 @@ typedef struct
 	int i_frame_start;
 	int i_frame_total;
 	int i_encode_frames;
+	int real_width;
 	int num_frames;
 	char* csp;
 	unsigned int chroma_height, chroma_width;

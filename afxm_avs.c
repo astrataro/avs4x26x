@@ -171,7 +171,7 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 		
 	avs_h.func.avs_release_value( res );
 
-	VideoInfo->i_width = vi->width;
+	VideoInfo->real_width = VideoInfo->i_width = vi->width;
 	VideoInfo->i_height = vi->height;
 	VideoInfo->i_fps_num = vi->fps_numerator;
 	VideoInfo->i_fps_den = vi->fps_denominator;

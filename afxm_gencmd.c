@@ -63,13 +63,13 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 			{
 				if ( strcmp(xcmdopt->argv[++i], "8") )
 				{
-					vi->i_width >>= 1;
+					vi->real_width >>= 1;
 					fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
 				}
 			}
 			else if ( strcmp(xcmdopt->argv[i], "--input-depth=8") )
 			{
-				vi->i_width >>= 1;
+				vi->real_width >>= 1;
 				fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
 			}
 			break;
@@ -120,7 +120,7 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 	}
 	if ( b_add_res )
 	{
-		sprintf(buf, " --input-res %dx%d", vi->i_width, vi->i_height);
+		sprintf(buf, " --input-res %dx%d", vi->real_width, vi->i_height);
 		strcat(cmd, buf);
 	}
 	if ( b_add_csp )
