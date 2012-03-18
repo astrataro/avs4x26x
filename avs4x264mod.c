@@ -236,20 +236,21 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
         }
     }
 
-    sprintf(cmd, "%s%s\" - ", buf, x264_binary);
+    sprintf(cmd, "\"%s%s\" - ", buf, x264_binary);
 
     /* skip invalid path name when both avs4x264mod and x264 binary is given by full path */
-    int p_cmd = (int)cmd;
+    char *p_cmd = cmd;
     char *cmd_tmp;
     cmd_tmp = malloc(8192);
     int cmd_len = strlen(cmd);
     cmd = strrchr( cmd, '\"' );                                              /* find the end of x264 binary path */
     while( strlen(cmd) < cmd_len && *(cmd) != ':' )                          /* find if drive number is given */
         cmd--;
-    while( strlen(cmd--) < cmd_len && *(cmd) != '\\' && *(cmd) != '/' );     /* if find drive number, skip invalid path before it */
-    *cmd = '"';                                                               /* insert '"' before processed path */
+    while( strlen(cmd) < cmd_len && *(cmd) != '\\' && *(cmd) != '/' )        /* if find drive number, skip invalid path before it */
+        cmd--;
+    *cmd = '\"';                                                             /* insert '"' before processed path */
     strcpy(cmd_tmp, cmd);
-    cmd = (char *)p_cmd;
+    cmd = p_cmd;
     strcpy(cmd, cmd_tmp);
     free(cmd_tmp);
 
