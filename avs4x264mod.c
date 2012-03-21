@@ -6,7 +6,7 @@
 
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  6
-#define VERSION_BUGFIX 2
+#define VERSION_BUGFIX 3
 
 #include <stdio.h>
 #include <stdlib.h>
