@@ -709,14 +709,18 @@ int main(int argc, char *argv[])
         printf("Options:\n");
         printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
         printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
-               "                                - fast: skip process of frames before seek number as x264 does if no --tcfile-in/--qpfile\n"
-               "                                        otherwise freeze frames before seek number to skip process but keep frame number\n"
-               "                                        ( x264 treats tcfile-in as timecodes of input video, not output video )\n"
-               "                                        normally safe enough for most randomly seekable AviSynth scripts\n"
-               "                                        may break scripts which can only be linearly seeked, like TDecimate(mode=3)\n"
-               "                                - safe: process and deliver every frame to x264\n"
-               "                                        should give accurate result with every AviSynth script\n"
-               "                                        significantly slower when the process is heavy\n");
+               "                                - fast: Skip process of frames before seek number as x264 does if no\n"
+               "                                        --tcfile-in/--qpfile specified;\n"
+               "                                        otherwise freeze frames before seek number to skip process, \n"
+               "                                        but keep frame number as-is.\n"
+               "                                        ( x264 treats tcfile-in/qpfile as timecodes/qpfile of input \n"
+               "                                        video, not output video )\n"
+               "                                        Normally safe enough for randomly seekable AviSynth scripts.\n"
+               "                                        May break scripts which can only be linearly seeked, such as\n"
+               "                                        TDecimate(mode=3)\n"
+               "                                - safe: Process and deliver every frame to x264.\n"
+               "                                        Should give accurate result with every AviSynth script.\n"
+               "                                        Significantly slower when the process is heavy.\n");
         return -1;
     }
     return exitcode;
