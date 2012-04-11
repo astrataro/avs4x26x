@@ -6,7 +6,7 @@
 
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  6
-#define VERSION_BUGFIX 3
+#define VERSION_BUGFIX 4
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -246,8 +246,8 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     cmd = strrchr( cmd, '\"' );                                              /* find the end of x264 binary path */
     while( strlen(cmd) < cmd_len && *(cmd) != ':' )                          /* find if drive number is given */
         cmd--;
-    while( strlen(cmd) < cmd_len && *(cmd) != '\\' && *(cmd) != '/' )        /* if find drive number, skip invalid path before it */
-        cmd--;
+    while( strlen(cmd) < cmd_len && *(--cmd) != '\\' && *(cmd) != '/' )      /* if find drive number, skip invalid path before it */
+        ;
     *cmd = '\"';                                                             /* insert '"' before processed path */
     strcpy(cmd_tmp, cmd);
     cmd = p_cmd;
