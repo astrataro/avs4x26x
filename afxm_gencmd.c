@@ -4,9 +4,10 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 {
 	int i;
 	char *cmd, *buf, *p_cmd;
-	int b_add_fps    = 1;
-	int b_add_csp    = 1;
-	int b_add_res    = 1;
+	int b_add_fps      = 1;
+	int b_add_csp      = 1;
+	int b_add_res      = 1;
+	int b_add_timebase = 0;
 	int len = (unsigned int)strrchr(xcmdopt->argv[0], '\\');
 	char *x264_binary;
 	x264_binary = DEFAULT_BINARY_PATH;
@@ -27,7 +28,18 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 		x264_binary = cmdopt->X264Path;
 	
 	if ( cmdopt->TCFile )
+	{
 		b_add_fps = 0;
+		b_add_timebase = 1;
+		for (i = 1; i < xcmdopt->argc; i++)
+		{
+			if ( !strncmp(xcmdopt->argv[i], "--timebase", 10) )
+			{
+				b_add_timebase = 0;
+				break;
+			}
+		}
+	}
 	else
 	{
 		for (i = 1; i < xcmdopt->argc; i++)
@@ -116,6 +128,11 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 	if ( b_add_fps )
 	{
 		sprintf(buf, " --fps %d/%d", vi->i_fps_num, vi->i_fps_den);
+		strcat(cmd, buf);
+	}
+	if ( b_add_timebase )
+	{
+		sprintf(buf, " --timebase %d", vi->i_fps_den);
 		strcat(cmd, buf);
 	}
 	if ( b_add_res )
