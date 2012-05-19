@@ -5,8 +5,8 @@
 // (at your option) any later version.
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  6
-#define VERSION_BUGFIX 4
+#define VERSION_MINOR  7
+#define VERSION_BUGFIX 0
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,7 +93,10 @@ fail:
     return -1;
 }
 
-static float get_avs_version( avs_hnd_t avs_h )
+/*
+ * @deprecated Use get_avs_version_string instead
+ *
+static float get_avs_version_number( avs_hnd_t avs_h )
 {
     if( !avs_h.func.avs_function_exists( avs_h.env, "VersionNumber" ) )
     {
@@ -112,6 +115,31 @@ static float get_avs_version( avs_hnd_t avs_h )
        return -1;
     }
     float ret = avs_as_float( ver );
+    avs_h.func.avs_release_value( ver );
+    return ret;
+}
+ *
+ */
+
+static char const *get_avs_version_string( avs_hnd_t avs_h )
+{
+    if( !avs_h.func.avs_function_exists( avs_h.env, "VersionString" ) )
+    {
+       fprintf( stderr, "avs [error]: VersionString does not exist\n" );
+       return "AviSynth: unknown version";
+    }
+    AVS_Value ver = avs_h.func.avs_invoke( avs_h.env, "VersionString", avs_new_value_array( NULL, 0 ), NULL );
+    if( avs_is_error( ver ) )
+    {
+       fprintf( stderr, "avs [error]: Unable to determine avisynth version: %s\n", avs_as_error( ver ) );
+       return "AviSynth: unknown version";
+    }
+    if( !avs_is_string( ver ) )
+    {
+       fprintf( stderr, "avs [error]: VersionString did not return a string value\n" );
+       return "AviSynth: unknown version";
+    }
+    const char *ret = avs_as_string( ver );
     avs_h.func.avs_release_value( ver );
     return ret;
 }
@@ -313,7 +341,8 @@ int main(int argc, char *argv[])
     avs_hnd_t avs_h;
     AVS_Value arg;
     AVS_Value res;
-    float avs_version;
+    // float avs_version_number;
+    const char *avs_version_string;
     AVS_VideoFrame *frm;
     //createprocess related
     HANDLE h_process, h_stdOut, h_stdErr, h_pipeRead, h_pipeWrite;
@@ -491,8 +520,10 @@ int main(int argc, char *argv[])
             goto avs_fail;
         }
         avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
-        avs_version = get_avs_version( avs_h );
-        fprintf( stdout, "avs [info]: Avisynth version: %.2f\n", avs_version );
+        // avs_version_number = get_avs_version_number( avs_h );
+        // fprintf( stdout, "avs [info]: AviSynth version: %.2f\n", avs_version_number );
+        avs_version_string = get_avs_version_string( avs_h );
+        fprintf( stdout, "avs [info]: %s\n", avs_version_string );
         const AVS_VideoInfo *vi = avs_h.func.avs_get_video_info( avs_h.clip );
         if( !avs_has_video( vi ) )
         {
