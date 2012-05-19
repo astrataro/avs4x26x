@@ -129,9 +129,10 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
 {
     int i;
     char *cmd, *buf;
-    int b_add_fps    = 1;
-    int b_add_csp    = 1;
-    int b_add_res    = 1;
+    int b_add_fps      = 1;
+    int b_add_csp      = 1;
+    int b_add_res      = 1;
+    int b_add_timebase = b_tc;
     int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
     x264_binary = DEFAULT_BINARY_PATH;
@@ -187,6 +188,14 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     if ( b_tc )
     {
         b_add_fps = 0;
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--timebase", 10) )
+            {
+                b_add_timebase = 0;
+                break;
+            }
+        }
     }
     else
     {
@@ -277,6 +286,11 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     if ( b_add_fps )
     {
         sprintf(buf, " --fps %d/%d", i_fps_num, i_fps_den);
+        strcat(cmd, buf);
+    }
+    if ( b_add_timebase )
+    {
+        sprintf(buf, " --timebase %d", i_fps_den);
         strcat(cmd, buf);
     }
     if ( b_add_res )
