@@ -258,6 +258,9 @@ AVSC_INLINE int avs_is_property(const AVS_VideoInfo * p, int property)
 AVSC_INLINE int avs_is_planar(const AVS_VideoInfo * p) 
         { return !!(p->pixel_type & AVS_CS_PLANAR); }
 
+AVSC_INLINE int avs_is_interleaved(const AVS_VideoInfo * p) 
+        { return !!(p->pixel_type & AVS_CS_INTERLEAVED); }
+
 AVSC_INLINE int avs_is_color_space(const AVS_VideoInfo * p, int c_space)
         { return avs_is_planar(p) ? ((p->pixel_type & AVS_CS_PLANAR_MASK) == (c_space & AVS_CS_PLANAR_FILTER)) : ((p->pixel_type & c_space) == c_space); }
         
@@ -272,6 +275,10 @@ AVSC_INLINE int avs_is_bff(const AVS_VideoInfo * p)
 
 AVSC_INLINE int avs_is_tff(const AVS_VideoInfo * p) 
         { return !!(p->image_type & AVS_IT_TFF); }
+
+AVSC_INLINE int avs_get_field_order(const AVS_VideoInfo * p)
+        { return (p->image_type & AVS_IT_BFF) ? AVS_IT_BFF :
+                 (p->image_type & AVS_IT_TFF) ? AVS_IT_TFF : 0;}
 
 AVSC_INLINE int avs_bits_per_pixel(const AVS_VideoInfo * p) 
 { 
