@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 /* the AVS interface currently uses __declspec to link function declarations to their definitions in the dll.
    this has a side effect of preventing program execution if the avisynth dll is not found,
@@ -594,10 +595,24 @@ int main(int argc, char *argv[])
         i_fps_num = vi->fps_numerator;
         i_fps_den = vi->fps_denominator;
         i_frame_total = vi->num_frames;
+
+        if( i_fps_den != 1 )
+        {
+            double f_fps = (double)i_fps_num / i_fps_den;
+            int i_nearest_NTSC_num = (int)(f_fps * 1.001 + 0.5);
+            const double f_epsilon = 0.01;
+
+            if( fabs(f_fps - i_nearest_NTSC_num / 1.001) < f_epsilon )
+            {
+                i_fps_num = i_nearest_NTSC_num * 1000;
+                i_fps_den = 1001;
+            }
+        }
+
         fprintf( stdout, "avs [info]: Video resolution: %dx%d\n"
                          "avs [info]: Video framerate: %d/%d\n"
                          "avs [info]: Video framecount: %d\n",
-                 vi->width, vi->height, vi->fps_numerator, vi->fps_denominator, vi->num_frames );
+                 i_width, i_height, i_fps_num, i_fps_den, i_frame_total );
 
         //execute the commandline
         h_process = GetCurrentProcess();
