@@ -376,7 +376,13 @@ int main(int argc, char *argv[])
         for (i=1;i<argc;i++)
         {
             len =  strlen(argv[i]);
-            if (len>4 && (argv[i][len-4])== '.' && tolower(argv[i][len-3])== 'a' && tolower(argv[i][len-2])== 'v' && tolower(argv[i][len-1])== 's')
+            if ( len>4 &&
+                 (argv[i][len-4])== '.' &&
+                 tolower(argv[i][len-3])== 'a' &&
+                 tolower(argv[i][len-2])== 'v' &&
+                 tolower(argv[i][len-1])== 's' &&
+                 strncmp(argv[i], "--audiofile=", 12) &&
+                 strcmp(argv[i-1], "--audiofile") )
             {
                 infile=argv[i];
                 break;
