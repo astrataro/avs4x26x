@@ -162,22 +162,10 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     int b_add_csp      = 1;
     int b_add_res      = 1;
     int b_add_timebase = b_tc;
-    int len = (unsigned int)strrchr(argv[0], '\\');
     char *x264_binary;
     x264_binary = DEFAULT_BINARY_PATH;
-    if (len)
-    {
-        len -=(unsigned int)argv[0];
-        buf = malloc(len+2<20 ? 20: len+2);
-        strncpy(buf, argv[0], len);
-        buf[len] = '\\';
-        buf[len+1] = 0;
-    }
-    else
-    {
-        buf = malloc(20);
-        *buf=0;
-    }
+    buf = malloc(20);
+    *buf=0;
     cmd = malloc(8192);
     for (i=1;i<argc;i++)
     {
@@ -274,23 +262,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
         }
     }
 
-    sprintf(cmd, "\"%s%s\" - ", buf, x264_binary);
-
-    /* skip invalid path name when both avs4x264mod and x264 binary is given by full path */
-    char *p_cmd = cmd;
-    char *cmd_tmp;
-    cmd_tmp = malloc(8192);
-    int cmd_len = strlen(cmd);
-    cmd = strrchr( cmd, '\"' );                                              /* find the end of x264 binary path */
-    while( strlen(cmd) < cmd_len && *(cmd) != ':' )                          /* find if drive number is given */
-        cmd--;
-    while( strlen(cmd) < cmd_len && *(--cmd) != '\\' && *(cmd) != '/' )      /* if find drive number, skip invalid path before it */
-        ;
-    *cmd = '\"';                                                             /* insert '"' before processed path */
-    strcpy(cmd_tmp, cmd);
-    cmd = p_cmd;
-    strcpy(cmd, cmd_tmp);
-    free(cmd_tmp);
+    sprintf(cmd, "\"%s\" - ", x264_binary);
 
     for (i=1;i<argc;i++)
     {
