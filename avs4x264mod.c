@@ -266,7 +266,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
 
     for (i=1;i<argc;i++)
     {
-        if (infile!=argv[i])
+        if ( infile!=argv[i] || !strcmp(argv[i-1], "--audiofile") )
         {
             if (strrchr(argv[i], ' '))
             {
