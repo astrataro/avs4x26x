@@ -174,32 +174,32 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             if( !strcmp(argv[i], "--x264-binary") || !strcmp(argv[i], "-L") )
             {
                 x264_binary = argv[i+1];
-                for (;i<argc-2;i++)
-                    argv[i] = argv[i+2];
+                for (int k=i;k<argc-2;k++)
+                    argv[k] = argv[k+2];
                 argc -= 2;
             }
             else if( !strncmp(argv[i], "--x264-binary=", 14) )
             {
                 x264_binary = argv[i]+14;
-                for (;i<argc-1;i++)
-                    argv[i] = argv[i+1];
+                for (int k=i;k<argc-1;k++)
+                    argv[k] = argv[k+1];
                 argc--;
             }
             else if( !strncmp(argv[i], "-L=", 3) )
             {
                 x264_binary = argv[i]+3;
-                for (;i<argc-1;i++)
-                    argv[i] = argv[i+1];
+                for (int k=i;k<argc-1;k++)
+                    argv[k] = argv[k+1];
                 argc--;
             }
             else                           /* else argv[i] should have structure like -Lx264 */
             {
                 x264_binary = argv[i]+2;
-                for (;i<argc-1;i++)
-                    argv[i] = argv[i+1];
+                for (int k=i;k<argc-1;k++)
+                    argv[k] = argv[k+1];
                 argc--;
             }
-            break;
+            i--;
         }
     }
     if ( b_tc )
@@ -241,7 +241,7 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
             break;
         }
     }
-    for (i=1;i<argc;i++)
+    for (i=argc-1;i>0;i--)
     {
         if( !strncmp(argv[i], "--input-depth", 13) )
         {
@@ -334,6 +334,7 @@ int main(int argc, char *argv[])
     int b_qp=0;
     int b_tc=0;
     int b_seek_safe=0;
+    int b_change_frame_total=0;
     int i_encode_frames;
     /*Video Info End*/
     char *planeY, *planeU, *planeV;
@@ -406,8 +407,8 @@ int main(int argc, char *argv[])
                         fprintf( stderr, "avs4x264 [error]: invalid seek-mode\n" );
                         return -1;
                     }
-                    for (;i<argc-2;i++)
-                        argv[i] = argv[i+2];
+                    for (int k=i;k<argc-2;k++)
+                        argv[k] = argv[k+2];
                     argc -= 2;
                 }
                 else if( !strncmp(argv[i], "--seek-mode=", 12) )
@@ -425,11 +426,11 @@ int main(int argc, char *argv[])
                         fprintf( stderr, "avs4x264 [error]: invalid seek-mode\n" );
                         return -1;
                     }
-                    for (;i<argc-1;i++)
-                        argv[i] = argv[i+1];
+                    for (int k=i;k<argc-1;k++)
+                        argv[k] = argv[k+1];
                     argc--;
                 }
-                break;
+                i--;
             }
         }
         for (i=1;i<argc;i++)
@@ -441,9 +442,10 @@ int main(int argc, char *argv[])
                     i_frame_start = atoi(argv[i+1]);
                     if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
                     {
-                        for (;i<argc-2;i++)
-                            argv[i] = argv[i+2];
+                        for (int k=i;k<argc-2;k++)
+                            argv[k] = argv[k+2];
                         argc -= 2;
+                        i--;
                     }
                 }
                 else
@@ -451,12 +453,12 @@ int main(int argc, char *argv[])
                     i_frame_start = atoi(argv[i]+7);
                     if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
                     {
-                        for (;i<argc-1;i++)
-                            argv[i] = argv[i+1];
+                        for (int k=i;k<argc-1;k++)
+                            argv[k] = argv[k+1];
                         argc -= 1;
+                        i--;
                     }
                 }
-                break;
             }
         }
 
@@ -634,21 +636,23 @@ int main(int argc, char *argv[])
                 if( !strcmp(argv[i], "--frames") )
                 {
                     i_frame_total = atoi(argv[i+1]);
-                    for (;i<argc-2;i++)
-                        argv[i] = argv[i+2];
+                    for (int k=i;k<argc-2;k++)
+                        argv[k] = argv[k+2];
                     argc -= 2;
                 }
                 else
                 {
                     i_frame_total = atoi(argv[i]+9);
-                    for (;i<argc-1;i++)
-                        argv[i] = argv[i+1];
+                    for (int k=i;k<argc-1;k++)
+                        argv[k] = argv[k+1];
                     argc -= 1;
                 }
-                i_frame_total += i_frame_start; /* ending frame should add offset of i_frame_start, not needed if not set as will be clamped */
-                break;
+                i--;
+                b_change_frame_total = 1;
             }
         }
+        if ( b_change_frame_total )
+            i_frame_total += i_frame_start; /* ending frame should add offset of i_frame_start, not needed if not set as will be clamped */
 
         if ( vi->num_frames < i_frame_total )
         {
