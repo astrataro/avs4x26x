@@ -314,6 +314,7 @@ int main(int argc, char *argv[])
     avs_hnd_t avs_h;
     AVS_Value arg;
     AVS_Value res;
+    char *filter = NULL;
     // float avs_version_number;
     const char *avs_version_string;
     AVS_VideoFrame *frm;
@@ -417,34 +418,6 @@ int main(int argc, char *argv[])
                 i--;
             }
         }
-        for (i=1;i<argc;i++)
-        {
-            if( !strncmp(argv[i], "--seek", 6) )
-            {
-                if( !strcmp(argv[i], "--seek") )
-                {
-                    i_frame_start = atoi(argv[i+1]);
-                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
-                    {
-                        for (int k=i;k<argc-2;k++)
-                            argv[k] = argv[k+2];
-                        argc -= 2;
-                        i--;
-                    }
-                }
-                else
-                {
-                    i_frame_start = atoi(argv[i]+7);
-                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
-                    {
-                        for (int k=i;k<argc-1;k++)
-                            argv[k] = argv[k+1];
-                        argc -= 1;
-                        i--;
-                    }
-                }
-            }
-        }
 
         //avs open
         if( avs_load_library( &avs_h ) )
@@ -463,13 +436,20 @@ int main(int argc, char *argv[])
         {
             len =  strlen(argv[i]);
 
-            if ( len>4 &&
+            if ( !strncmp(argv[i], "--audiofile=", 12) || !strncmp(argv[i], "--output=", 9) )
+                continue;
+            else if ( !strncmp(argv[i], "-o", 2) && strcmp(argv[i], "-o") )                   // special case: -ofilename.ext equals to --output filename.ext
+                continue;
+            else if ( !strcmp(argv[i], "--output") || !strcmp(argv[i], "-o") || !strcmp(argv[i], "--audiofile") )
+            {
+                i++;
+                continue;
+            }
+            else if ( len>4 &&
                  (argv[i][len-4])== '.' &&
                  tolower(argv[i][len-3])== 'a' &&
                  tolower(argv[i][len-2])== 'v' &&
-                 tolower(argv[i][len-1])== 's' &&
-                 strncmp(argv[i], "--audiofile=", 12) &&
-                 strcmp(argv[i-1], "--audiofile") )
+                 tolower(argv[i][len-1])== 's' )
             {
                 infile=argv[i];
                 arg = avs_new_value_string( infile );
@@ -489,7 +469,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'v' )
             {
                 infile=argv[i];
-                char *filter = "MPEG2Source";
+                filter = "MPEG2Source";
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
                     fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
@@ -512,7 +492,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'a' )
             {
                 infile=argv[i];
-                char *filter = "AVCSource";
+                filter = "AVCSource";
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
                     fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
@@ -535,7 +515,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'i' )
             {
                 infile=argv[i];
-                char *filter = "DGSource";
+                filter = "DGSource";
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
                     fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
@@ -551,6 +531,172 @@ int main(int argc, char *argv[])
                 break;
             }
 
+            else if ( len>4 &&
+                      (argv[i][len-4])== '.' &&
+                      tolower(argv[i][len-3])== 'a' &&
+                      tolower(argv[i][len-2])== 'v' &&
+                      tolower(argv[i][len-1])== 'i' )
+            {
+                infile=argv[i];
+                filter = "AVISource";
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    goto source_ffms_general;
+                }
+                else
+                    break;
+            }
+
+            else if ( ( len>5 && (argv[i][len-5])== '.' && (   ( tolower(argv[i][len-4])== 'm' && argv[i][len-3]== '2' && tolower(argv[i][len-2])== 't' && tolower(argv[i][len-1])== 's' )  // m2ts
+                                                            || ( tolower(argv[i][len-4])== 'm' && argv[i][len-3]== 'p' && tolower(argv[i][len-2])== 'e' && tolower(argv[i][len-1])== 'g' )  // mpeg
+                                                           )
+                      )
+                   || ( len>4 && (argv[i][len-4])== '.' && (   ( tolower(argv[i][len-3])== 'v' && tolower(argv[i][len-2])== 'o' && tolower(argv[i][len-1])== 'b' )                         // vob
+                                                            || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== '2' && tolower(argv[i][len-1])== 'v' )                         // m2v
+                                                            || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'p' && tolower(argv[i][len-1])== 'g' )                         // mpg
+                                                            || ( tolower(argv[i][len-3])== 'o' && tolower(argv[i][len-2])== 'g' && tolower(argv[i][len-1])== 'v' )                         // ogv
+                                                            || ( tolower(argv[i][len-3])== 'o' && tolower(argv[i][len-2])== 'g' && tolower(argv[i][len-1])== 'm' )                         // ogm
+                                                           )
+                      )
+                   || ( len>3 && (argv[i][len-3])== '.' && (   ( tolower(argv[i][len-2])== 't' && tolower(argv[i][len-1])== 's' )                                                           // ts
+                                                            || ( tolower(argv[i][len-2])== 't' && tolower(argv[i][len-1])== 'p' )                                                           // tp
+                                                            || ( tolower(argv[i][len-2])== 'p' && tolower(argv[i][len-1])== 's' )                                                           // ps
+                                                           )
+                      )
+                    )                                               /* We don't trust ffms's non-linear seeking for these formats */
+            {
+                infile=argv[i];
+                filter = "FFIndex";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_string( "lavf" ) };
+                    const char *arg_name[] = { "source", "demuxer" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                        goto source_dss;
+                    }
+                }
+                else
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    goto source_dss;
+                }
+
+                filter = "FFVideoSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_int( 1 ), avs_new_value_int( -1 ) };
+                    const char *arg_name[] = { "source", "threads", "seekmode" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 3 ), arg_name );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                        goto source_dss;
+                    }
+                    else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: No safe non-linear seeking guaranteed for input file, force seek-mode=safe\n" );
+                        b_seek_safe = 1;
+                    }
+                }
+                else
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    goto source_dss;
+                }
+                break;
+            }
+
+            else if ( ( len>4 && (argv[i][len-4])== '.' && (   ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'k' && tolower(argv[i][len-1])== 'v' )  // mkv
+                                                            || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'p' && tolower(argv[i][len-1])== '4' )  // mp4
+                                                            || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== '4' && tolower(argv[i][len-1])== 'v' )  // m4v
+                                                            || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'o' && tolower(argv[i][len-1])== 'v' )  // mov
+                                                            || ( tolower(argv[i][len-3])== 'f' && tolower(argv[i][len-2])== 'l' && tolower(argv[i][len-1])== 'v' )  // flv
+                                                           )
+                      )
+                   || ( len>5 && (argv[i][len-5])== '.' && tolower(argv[i][len-4])== 'w' && tolower(argv[i][len-3])== 'e' && tolower(argv[i][len-2])== 'b' && tolower(argv[i][len-1])== 'm' )  // webm
+                    )                                              /* Non-linear seeking seems to be reliable for these formats */
+            {
+                infile=argv[i];
+source_ffms_general:
+                filter = "FFVideoSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_int( 1 ) };
+                    const char *arg_name[] = { "source", "threads" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                        goto source_dss;
+                    }
+                }
+                else
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    goto source_dss;
+                }
+                break;
+            }
+
+            else if ( ( len>5 && (argv[i][len-5])== '.' && (   ( tolower(argv[i][len-4])== 'r' && argv[i][len-3]== 'm' && tolower(argv[i][len-2])== 'v' && tolower(argv[i][len-1])== 'b' )  // rmvb
+                                                            || ( tolower(argv[i][len-4])== 'd' && argv[i][len-3]== 'i' && tolower(argv[i][len-2])== 'v' && tolower(argv[i][len-1])== 'x' )  // divx
+                                                           )
+                      )
+                   || ( len>4 && (argv[i][len-4])== '.' && (   ( tolower(argv[i][len-3])== 'w' && tolower(argv[i][len-2])== 'm' && tolower(argv[i][len-1])== 'v' )                         // wmv
+                                                            || ( tolower(argv[i][len-3])== 'w' && tolower(argv[i][len-2])== 'm' && tolower(argv[i][len-1])== 'p' )                         // wmp
+                                                            || ( tolower(argv[i][len-3])== 'a' && tolower(argv[i][len-2])== 's' && tolower(argv[i][len-1])== 'f' )                         // asf
+                                                           )
+                      )
+                   || ( len>3 && (argv[i][len-3])== '.' && (   ( tolower(argv[i][len-2])== 'r' && tolower(argv[i][len-1])== 'm' )                                                           // rm
+                                                            || ( tolower(argv[i][len-2])== 'w' && tolower(argv[i][len-1])== 'm' )                                                           // wm
+                                                           )
+                      )
+                    )                                              /* Only use DSS2/DirectShowSource for these formats */
+            {
+                infile=argv[i];
+source_dss:
+                filter = "DSS2";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    arg = avs_new_value_string( infile );
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    }
+                    else
+                        break;
+                }
+                else
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+
+                filter = "DirectShowSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_bool( 0 ) };
+                    const char *arg_name[] = { NULL, "audio" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    }
+                    else
+                        break;
+                }
+                else
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                }
+                goto avs_fail;
+                break;
+            }
+
         }
 
         if (!infile)
@@ -558,6 +704,9 @@ int main(int argc, char *argv[])
             fprintf( stderr, "avs4x264 [error]: No supported input file found.\n");
             goto avs_fail;
         }
+
+        if (filter)
+            fprintf( stdout, "avs4x264 [info]: using \"%s\" as source filter\n", filter );
 
         /* check if the user is using a multi-threaded script and apply distributor if necessary.
            adapted from avisynth's vfw interface */
@@ -631,6 +780,34 @@ int main(int argc, char *argv[])
             chroma_height = vi->height >> 1;
         }
 
+        for (i=1;i<argc;i++)
+        {
+            if( !strncmp(argv[i], "--seek", 6) )
+            {
+                if( !strcmp(argv[i], "--seek") )
+                {
+                    i_frame_start = atoi(argv[i+1]);
+                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
+                    {
+                        for (int k=i;k<argc-2;k++)
+                            argv[k] = argv[k+2];
+                        argc -= 2;
+                        i--;
+                    }
+                }
+                else
+                {
+                    i_frame_start = atoi(argv[i]+7);
+                    if( !b_tc && !b_qp && !b_seek_safe )   /* delete seek parameters if no timecodes/qpfile and seek-mode=fast */
+                    {
+                        for (int k=i;k<argc-1;k++)
+                            argv[k] = argv[k+1];
+                        argc -= 1;
+                        i--;
+                    }
+                }
+            }
+        }
         if ( !b_seek_safe && i_frame_start && ( b_qp || b_tc ) )
         {
             fprintf( stdout, "avs4x264 [info]: seek-mode=fast with qpfile or timecodes in, freeze first %d %s for fast processing\n", i_frame_start, i_frame_start==1 ? "frame" : "frames" );
