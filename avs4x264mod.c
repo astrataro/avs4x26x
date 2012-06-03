@@ -360,11 +360,6 @@ int main(int argc, char *argv[])
                 infile=argv[i];
                 break;
             }
-            else if((len==12)&&(strcmp(argv[i], "--interlaced")==0))
-            {
-                fprintf( stderr, "--interlaced found.\n");
-                b_interlaced=1;
-            }
         }
         if (!infile)
         {
@@ -372,6 +367,15 @@ int main(int argc, char *argv[])
             return -1;
         }
 
+        for (i=1;i<argc;i++)
+        {
+            if( !strcmp(argv[i], "--interlaced") || !strcmp(argv[i], "--tff") || !strcmp(argv[i], "--bff") )
+            {
+                fprintf( stderr, "%s found.\n", argv[i]);
+                b_interlaced=1;
+                break;
+            }
+        }
         for (i=1;i<argc;i++)
         {
             if( !strncmp(argv[i], "--qpfile", 8) )
