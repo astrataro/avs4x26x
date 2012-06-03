@@ -489,8 +489,14 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'v' )
             {
                 infile=argv[i];
+                char *filter = "MPEG2Source";
+                if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    goto avs_fail;
+                }
                 arg = avs_new_value_string( infile );
-                res = avs_h.func.avs_invoke( avs_h.env, "MPEG2Source", arg, NULL );
+                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
                 if( avs_is_error( res ) )
                 {
                     fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
@@ -506,8 +512,14 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'a' )
             {
                 infile=argv[i];
+                char *filter = "AVCSource";
+                if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    goto avs_fail;
+                }
                 arg = avs_new_value_string( infile );
-                res = avs_h.func.avs_invoke( avs_h.env, "AVCSource", arg, NULL );
+                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
                 if( avs_is_error( res ) )
                 {
                     fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
@@ -523,8 +535,14 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'i' )
             {
                 infile=argv[i];
+                char *filter = "DGSource";
+                if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    goto avs_fail;
+                }
                 arg = avs_new_value_string( infile );
-                res = avs_h.func.avs_invoke( avs_h.env, "DGSource", arg, NULL );
+                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
                 if( avs_is_error( res ) )
                 {
                     fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
