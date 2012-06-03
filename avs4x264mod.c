@@ -346,26 +346,6 @@ int main(int argc, char *argv[])
     if (argc>1)
     {
         //get the script file and other informations from the commandline
-        for (i=1;i<argc;i++)
-        {
-            len =  strlen(argv[i]);
-            if ( len>4 &&
-                 (argv[i][len-4])== '.' &&
-                 tolower(argv[i][len-3])== 'a' &&
-                 tolower(argv[i][len-2])== 'v' &&
-                 tolower(argv[i][len-1])== 's' &&
-                 strncmp(argv[i], "--audiofile=", 12) &&
-                 strcmp(argv[i-1], "--audiofile") )
-            {
-                infile=argv[i];
-                break;
-            }
-        }
-        if (!infile)
-        {
-            fprintf( stderr, "No avs script found.\n");
-            return -1;
-        }
 
         for (i=1;i<argc;i++)
         {
@@ -478,12 +458,86 @@ int main(int argc, char *argv[])
            fprintf( stderr, "avs [error]: failed to initiate avisynth\n" );
            goto avs_fail;
         }
-        arg = avs_new_value_string( infile );
 
-        res = avs_h.func.avs_invoke( avs_h.env, "Import", arg, NULL );
-        if( avs_is_error( res ) )
+        for (i=1;i<argc;i++)
         {
-            fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+            len =  strlen(argv[i]);
+
+            if ( len>4 &&
+                 (argv[i][len-4])== '.' &&
+                 tolower(argv[i][len-3])== 'a' &&
+                 tolower(argv[i][len-2])== 'v' &&
+                 tolower(argv[i][len-1])== 's' &&
+                 strncmp(argv[i], "--audiofile=", 12) &&
+                 strcmp(argv[i-1], "--audiofile") )
+            {
+                infile=argv[i];
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, "Import", arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    goto avs_fail;
+                }
+                break;
+            }
+
+            else if ( len>4 &&
+                      (argv[i][len-4])== '.' &&
+                      tolower(argv[i][len-3])== 'd' &&
+                      tolower(argv[i][len-2])== '2' &&
+                      tolower(argv[i][len-1])== 'v' )
+            {
+                infile=argv[i];
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, "MPEG2Source", arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    goto avs_fail;
+                }
+                break;
+            }
+
+            else if ( len>4 &&
+                      (argv[i][len-4])== '.' &&
+                      tolower(argv[i][len-3])== 'd' &&
+                      tolower(argv[i][len-2])== 'g' &&
+                      tolower(argv[i][len-1])== 'a' )
+            {
+                infile=argv[i];
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, "AVCSource", arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    goto avs_fail;
+                }
+                break;
+            }
+
+            else if ( len>4 &&
+                      (argv[i][len-4])== '.' &&
+                      tolower(argv[i][len-3])== 'd' &&
+                      tolower(argv[i][len-2])== 'g' &&
+                      tolower(argv[i][len-1])== 'i' )
+            {
+                infile=argv[i];
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, "DGSource", arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    goto avs_fail;
+                }
+                break;
+            }
+
+        }
+
+        if (!infile)
+        {
+            fprintf( stderr, "avs4x264 [error]: No supported input file found.\n");
             goto avs_fail;
         }
 
