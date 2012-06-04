@@ -5,7 +5,7 @@
 // (at your option) any later version.
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  7
+#define VERSION_MINOR  8
 #define VERSION_BUGFIX 0
 
 #include <stdio.h>
@@ -470,9 +470,10 @@ int main(int argc, char *argv[])
             {
                 infile=argv[i];
                 filter = "MPEG2Source";
+                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto avs_fail;
                 }
                 arg = avs_new_value_string( infile );
@@ -482,6 +483,7 @@ int main(int argc, char *argv[])
                     fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                     goto avs_fail;
                 }
+                fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                 break;
             }
 
@@ -493,9 +495,10 @@ int main(int argc, char *argv[])
             {
                 infile=argv[i];
                 filter = "AVCSource";
+                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto avs_fail;
                 }
                 arg = avs_new_value_string( infile );
@@ -505,6 +508,7 @@ int main(int argc, char *argv[])
                     fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                     goto avs_fail;
                 }
+                fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                 break;
             }
 
@@ -516,9 +520,10 @@ int main(int argc, char *argv[])
             {
                 infile=argv[i];
                 filter = "DGSource";
+                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto avs_fail;
                 }
                 arg = avs_new_value_string( infile );
@@ -528,6 +533,7 @@ int main(int argc, char *argv[])
                     fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                     goto avs_fail;
                 }
+                fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                 break;
             }
 
@@ -539,6 +545,7 @@ int main(int argc, char *argv[])
             {
                 infile=argv[i];
                 filter = "AVISource";
+                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 arg = avs_new_value_string( infile );
                 res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
                 if( avs_is_error( res ) )
@@ -547,7 +554,10 @@ int main(int argc, char *argv[])
                     goto source_ffms_general;
                 }
                 else
+                {
+                    fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                     break;
+                }
             }
 
             else if ( ( len>5 && (argv[i][len-5])== '.' && (   ( tolower(argv[i][len-4])== 'm' && argv[i][len-3]== '2' && tolower(argv[i][len-2])== 't' && tolower(argv[i][len-1])== 's' )  // m2ts
@@ -572,6 +582,8 @@ int main(int argc, char *argv[])
                 filter = "FFIndex";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
+                    fprintf( stdout, "avs4x264 [info]: trying \"FFVideoSource\"\n" );
+                    fprintf( stdout, "avs4x264 [info]: indexing...\n" );
                     AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_string( "lavf" ) };
                     const char *arg_name[] = { "source", "demuxer" };
                     res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
@@ -583,7 +595,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto source_dss;
                 }
 
@@ -600,13 +612,14 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                         fprintf( stdout, "avs4x264 [info]: No safe non-linear seeking guaranteed for input file, force seek-mode=safe\n" );
                         b_seek_safe = 1;
                     }
                 }
                 else
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto source_dss;
                 }
                 break;
@@ -627,6 +640,8 @@ source_ffms_general:
                 filter = "FFVideoSource";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                    fprintf( stdout, "avs4x264 [info]: indexing...\n" );
                     AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_int( 1 ) };
                     const char *arg_name[] = { "source", "threads" };
                     res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
@@ -635,10 +650,11 @@ source_ffms_general:
                         fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                         goto source_dss;
                     }
+                    fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                 }
                 else
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto source_dss;
                 }
                 break;
@@ -664,6 +680,7 @@ source_dss:
                 filter = "DSS2";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                     arg = avs_new_value_string( infile );
                     res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
                     if( avs_is_error( res ) )
@@ -671,14 +688,18 @@ source_dss:
                         fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                     }
                     else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                         break;
+                    }
                 }
                 else
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
 
                 filter = "DirectShowSource";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                     AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_bool( 0 ) };
                     const char *arg_name[] = { NULL, "audio" };
                     res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
@@ -687,11 +708,14 @@ source_dss:
                         fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                     }
                     else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                         break;
+                    }
                 }
                 else
                 {
-                    fprintf( stderr, "avs4x264 [error]: %s not found\n", filter );
+                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                 }
                 goto avs_fail;
                 break;
@@ -998,11 +1022,26 @@ source_dss:
     else
     {
         printf("\n"
-               "avs4x264mod - simple Avisynth pipe tool for x264\n"
+               "avs4x264mod - simple AviSynth pipe tool for x264\n"
                "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
-        printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , argv[0]);
-        printf("Options:\n");
-        printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
+        printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>\n"
+               "\n"
+               "Supported input formats:\n"
+               "     .avs\n"
+               "     .d2v: requires DGDecode.dll\n"
+               "     .dga: requires DGAVCDecode.dll\n"
+               "     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
+               "     .avi: try to use AVISource -> FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
+               "     .m2ts/.mpeg/.vob/.m2v/.mpg/.ogm/.ogv/.ts/.tp/.ps:\n"
+               "           try to use FFVideoSource(demuxer=\"lavf\" and seekmode=-1) -> DSS2 -> DirectShowSource\n"
+               "           seek-mode will be forced to \"safe\" for these formats\n"
+               "     .mkv/.mp4/.m4v/.mov/.flv/.webm:\n"
+               "           try to use FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
+               "     .rmvb/.divx/.wmv/.wmp/.asf/.rm/.wm:\n"
+               "           try to use DSS2 -> DirectShowSource\n"
+               "\n");
+        printf("Options:\n"
+               " -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
         printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
                "                                - fast: Skip process of frames before seek number as x264 does if no\n"
                "                                        --tcfile-in/--qpfile specified;\n"
