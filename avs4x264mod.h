@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <string.h>
 #include <ctype.h>
+//#include <math.h>
 
 /* the AVS interface currently uses __declspec to link function declarations to their definitions in the dll.
    this has a side effect of preventing program execution if the avisynth dll is not found,
@@ -117,6 +118,7 @@ typedef struct
 	int Frames;
 	char* X264Path;
 	char* InFile;
+	int InFileType;
 } cmd_t;
 
 typedef struct
@@ -132,5 +134,10 @@ typedef struct
 #define ERR_PROCESS_FAIL -4
 
 #define DEFAULT_BINARY_PATH "x264_64"
+
+#define IFT_AVS 0x80
+#define IFT_D2V 0x81
+#define IFT_DGA 0x82
+#define IFT_DGI 0x83
 
 #endif

@@ -74,7 +74,7 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 			argc--;
 			i--;
 		}
-		else if (!strcmp(argv[i], "--interlaced"))
+		else if (!strcmp(argv[i], "--interlaced") || !strcmp(argv[i], "--tff") || !strcmp(argv[i], "--bff"))
 		{
 			cmd_options->Interlaced = 1;
 		}
@@ -93,14 +93,65 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 			argc -= 2;
 			i--;
 		}
+		else if ( !strcmp(argv[i], "--output") || !strcmp(argv[i], "-o") || !strcmp(argv[i], "--audiofile") )
+		{
+			i++; // prevent output file being detected as input.
+		}
 		else
 		{
 			int len = strlen(argv[i]);
-			if (len > 4 && (argv[i][len - 4]) == '.' &&
-				tolower(argv[i][len - 3]) == 'a' &&
-				tolower(argv[i][len - 2]) == 'v' &&
-				tolower(argv[i][len - 1]) == 's')
-				cmd_options->InFile = argv[i];
+			if (len > 4)
+			{
+				char * extension;
+				for(extension = argv[i] + len - 4; extension[0] != '.' && extension > argv[i]; extension--);
+				if(strcasecmp(extension, ".avs") == 0)
+				{
+					cmd_options->InFileType = IFT_AVS;
+					cmd_options->InFile = argv[i];
+				}
+				else if(strcasecmp(extension, ".d2v") == 0)
+				{
+					cmd_options->InFileType = IFT_D2V;
+					cmd_options->InFile = argv[i];
+				}
+				else if(strcasecmp(extension, ".dga") == 0)
+				{
+					cmd_options->InFileType = IFT_DGA;
+					cmd_options->InFile = argv[i];
+				}
+				else if(strcasecmp(extension, ".dgi") == 0)
+				{
+					cmd_options->InFileType = IFT_DGI;
+					cmd_options->InFile = argv[i];
+				}
+				// Go use dgavc instead
+				else if(strcasecmp(extension, ".m2ts") == 0
+					||	strcasecmp(extension, ".ogv") == 0
+					||	strcasecmp(extension, ".ogm") == 0
+					||	strcasecmp(extension, ".mp4") == 0
+					||	strcasecmp(extension, ".m4v") == 0
+					||	strcasecmp(extension, ".mkv") == 0
+					||	strcasecmp(extension, ".mov") == 0
+					||	strcasecmp(extension, ".flv") == 0
+					||	strcasecmp(extension, ".wmv") == 0
+					)
+				{
+					color_printf( "avs4x264 [info]: I'd recommend open %s using x264 directly, when opening %s type.\n", argv[i], extension);
+					//TODO: support FFV or DSS2
+				}
+				else if(strcasecmp(extension, ".mpeg") == 0
+					||	strcasecmp(extension, ".vob") == 0
+					||	strcasecmp(extension, ".m2v") == 0
+					||	strcasecmp(extension, ".mpg") == 0
+					||	strcasecmp(extension, ".ts") == 0
+					||	strcasecmp(extension, ".tp") == 0
+					||	strcasecmp(extension, ".ps") == 0
+					)
+				{
+					color_printf( "avs4x264 [info]: I'd recommend index %s using corresponding DG-tools, when opening %s type.\n", argv[i], extension);
+					//TODO: support FFV or DSS2
+				}
+			}
 		}
 	}
 	*_argc = argc;
@@ -112,11 +163,11 @@ int main(int argc, char **argv)
 	memset(cmd_options, 0, sizeof(cmd_t));
 	parse_opt(&argc, argv, cmd_options);
 	printf("AFF=%d XAFF=%d BUFF=%d SS=%d PP=%d\n",
-	       cmd_options->Affinity,
-	       cmd_options->x264Affinity,
-	       cmd_options->BufferSize,
-	       cmd_options->SeekSafe,
-	       cmd_options->PipeMT);
+		   cmd_options->Affinity,
+		   cmd_options->x264Affinity,
+		   cmd_options->BufferSize,
+		   cmd_options->SeekSafe,
+		   cmd_options->PipeMT);
 	int i;
 	for (i = 1; i < argc; i++)
 	{

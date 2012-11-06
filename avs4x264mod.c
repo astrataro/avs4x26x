@@ -5,8 +5,8 @@
 // (at your option) any later version.
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  6
-#define VERSION_BUGFIX 2
+#define VERSION_MINOR  8
+#define VERSION_BUGFIX 0
 
 #include "avs4x264mod.h"
 
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 {
 	printf("\n"
 	       "avs4x264mod - simple Avisynth pipe tool for x264\n"
-	       "Version: %d.%d.%d.%d, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
+	       "Version: %d.%d.%d.%d-excalibur, built on %s, %s\n\n", VERSION_MAJOR, VERSION_MINOR, VERSION_BUGFIX, VERSION_GIT, __DATE__, __TIME__);
 	if (argc == 1)
 	{
 		showhelp(argv[0]);
@@ -156,27 +156,38 @@ avs_cleanup:
 
 void showhelp(char *prog)
 {
-	printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>.avs\n"        , prog);
+	printf("Usage: avs4x264mod [avs4x264mod options] [x264 options] <input>\n\n"        , prog);
+	puts("Supported input formats:\n"
+		"     .avs\n"
+		"     .d2v: requires DGDecode.dll\n"
+		"     .dga: requires DGAVCDecode.dll\n"
+		"     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
+	);
 	printf("Options:\n");
 	printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
-	printf("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
-	       "               - fast: skip process of frames before seek number as x264 does if no --tcfile-in/--qpfile\n"
-	       "                       otherwise freeze frames before seek number to skip process but keep frame number\n"
-	       "                       ( x264 treats tcfile-in as timecodes of input video, not output video )\n"
-	       "                       normally safe enough for most randomly seekable AviSynth scripts\n"
-	       "                       may break scripts which can only be linearly seeked, like TDecimate(mode=3)\n"
-	       "               - safe: process and deliver every frame to x264\n"
-	       "                       should give accurate result with every AviSynth script\n"
-	       "                       significantly slower when the process is heavy\n");
-		puts(" --x264-affinity <cpu>      Set Process Affinity for x264");
-		puts(" --affinity <cpu>           Set Process Affinity for the piper");
-		puts(" --pipe-mt                  Seperated thread for pipe buffer");
-		puts(" --pipe-buffer              Pipe buffer frames [Default: 512, 1024, 2048 depends]");
-		puts("");
-		puts("   Affinity is in decimal (eg. 63 for core 0~5, 1+2+4+8+16+32)");
-		puts("");
-		puts("This program is free software; you can redistribute it and/or modify");
-		puts("it under the terms of the GNU General Public License as published by");
-		puts("the Free Software Foundation; either version 2 of the License, or");
-		puts("(at your option) any later version.");
+	puts("     --seek-mode <string>   Set seek mode when using --seek. [Default=\"fast\"]\n"
+		"                                - fast: Skip process of frames before seek number as x264 does if no\n"
+		"                                        --tcfile-in/--qpfile specified;\n"
+		"                                        otherwise freeze frames before seek number to skip process, \n"
+		"                                        but keep frame number as-is.\n"
+		"                                        ( x264 treats tcfile-in/qpfile as timecodes/qpfile of input \n"
+		"                                        video, not output video )\n"
+		"                                        Normally safe enough for randomly seekable AviSynth scripts.\n"
+		"                                        May break scripts which can only be linearly seeked, such as\n"
+		"                                        TDecimate(mode=3)\n"
+		"                                - safe: Process and deliver every frame to x264.\n"
+		"                                        Should give accurate result with every AviSynth script.\n"
+		"                                        Significantly slower when the process is heavy.\n");
+
+	puts(" --x264-affinity <cpu>      Set Process Affinity for x264\n"
+			" --affinity <cpu>           Set Process Affinity for the piper\n"
+			" --pipe-mt                  Seperated thread for pipe buffer\n"
+			" --pipe-buffer              Pipe buffer frames [Default: 512, 1024, 2048 depends]\n"
+			"\n"
+			"   Affinity is in decimal (eg. 63 = 1+2+4+8+16+32 means core 0~5)\n"
+			"\n"
+			"This program is free software; you can redistribute it and/or modify\n"
+			"it under the terms of the GNU General Public License as published by\n"
+			"the Free Software Foundation; either version 2 of the License, or\n"
+			"(at your option) any later version.");
 }

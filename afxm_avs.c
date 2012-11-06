@@ -29,28 +29,29 @@ fail:
 	return -1;
 }
 
-float get_avs_version( avs_hnd_t avs_h )
+static char const *get_avs_version_string( avs_hnd_t avs_h )
 {
-	if ( !avs_h.func.avs_function_exists( avs_h.env, "VersionNumber" ) )
+	if( !avs_h.func.avs_function_exists( avs_h.env, "VersionString" ) )
 	{
-		fprintf( stderr, "avs [error]: VersionNumber does not exist\n" );
-		return -1;
+	   fprintf( stderr, "avs [error]: VersionString does not exist\n" );
+	   return "AviSynth: unknown version";
 	}
-	AVS_Value ver = avs_h.func.avs_invoke( avs_h.env, "VersionNumber", avs_new_value_array( NULL, 0 ), NULL );
-	if ( avs_is_error( ver ) )
+	AVS_Value ver = avs_h.func.avs_invoke( avs_h.env, "VersionString", avs_new_value_array( NULL, 0 ), NULL );
+	if( avs_is_error( ver ) )
 	{
-		fprintf( stderr, "avs [error]: Unable to determine avisynth version: %s\n", avs_as_error( ver ) );
-		return -1;
+	   fprintf( stderr, "avs [error]: Unable to determine avisynth version: %s\n", avs_as_error( ver ) );
+	   return "AviSynth: unknown version";
 	}
-	if ( !avs_is_float( ver ) )
+	if( !avs_is_string( ver ) )
 	{
-		fprintf( stderr, "avs [error]: VersionNumber did not return a float value\n" );
-		return -1;
+	   fprintf( stderr, "avs [error]: VersionString did not return a string value\n" );
+	   return "AviSynth: unknown version";
 	}
-	float ret = avs_as_float( ver );
+	const char *ret = avs_as_string( ver );
 	avs_h.func.avs_release_value( ver );
 	return ret;
 }
+
 
 AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, AVS_Value release )
 {
@@ -63,7 +64,9 @@ AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, 
 
 int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 {
-	float avs_version;
+	// float avs_version;
+	const char *avs_version_string;
+	char * filter;
 	//avs open
 	if ( avs_load_library( &avs_h ) )
 	{
@@ -77,9 +80,26 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 		return ERR_AVS_FAIL;
 	}
 	fprintf( stderr, "avs [info]: Trying to open %s\n", VideoInfo->infile );
-	arg = avs_new_value_string( VideoInfo->infile );
-
-	res = avs_h.func.avs_invoke( avs_h.env, "Import", arg, NULL );
+	
+	switch(cmd_options->InFileType)
+	{
+		case IFT_AVS:	filter = "Import";		break;
+		case IFT_D2V:	filter = "MPEG2Source";	break;
+		case IFT_DGA:	filter = "AVCSource";		break;
+		case IFT_DGI:	filter = "DGSource";		break;
+		default:
+			color_printf("avs4x264 [error]: No supported input file found.\n");
+			return ERR_AVS_FAIL;
+			break;
+	}
+	if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
+	{
+		color_printf( "avs4x264 [error]: %s not found.\n", filter );
+		return ERR_AVS_FAIL;
+	}
+	arg = avs_new_value_string( cmd_options->InFile );
+	color_printf("avs4x264 [info]: >> %s ( \"%s\" )\n", filter, cmd_options->InFile);
+	res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
 	if ( avs_is_error( res ) )
 	{
 		fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
@@ -104,8 +124,13 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 		return ERR_AVS_FAIL;
 	}
 	avs_h.clip = avs_h.func.avs_take_clip( res, avs_h.env );
+	/*
 	avs_version = get_avs_version( avs_h );
 	fprintf( stdout, "avs [info]: Avisynth version: %.2f\n", avs_version );
+	*/
+	avs_version_string = get_avs_version_string( avs_h );
+	fprintf( stdout, "avs [info]: %s\n", avs_version_string );
+	
 	const AVS_VideoInfo *vi = avs_h.func.avs_get_video_info( avs_h.clip );
 	if ( !avs_has_video( vi ) )
 	{
@@ -115,7 +140,7 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 	if ( vi->width & 1 || vi->height & 1 )
 	{
 		fprintf( stderr, "avs [error]: input clip width or height not divisible by 2 (%dx%d)\n",
-		         vi->width, vi->height );
+				 vi->width, vi->height );
 		return ERR_AVS_FAIL;
 	}
 	if ( avs_is_yv12( vi ) )
@@ -178,11 +203,25 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 	VideoInfo->i_frame_total = vi->num_frames;
 	VideoInfo->num_frames = vi->num_frames;
 
+	if( VideoInfo->i_fps_den != 1 )
+	{
+		double f_fps = (double)VideoInfo->i_fps_num / VideoInfo->i_fps_den;
+		int i_nearest_NTSC_num = (int)(f_fps * 1.001 + 0.5);
+		const double f_epsilon = 0.01;
+		double delta_fps = f_fps - i_nearest_NTSC_num / 1.001;
+
+		if( delta_fps < f_epsilon && delta_fps > -f_epsilon)
+		{
+			VideoInfo->i_fps_num = i_nearest_NTSC_num * 1000;
+			VideoInfo->i_fps_den = 1001;
+		}
+	}
+
 	fprintf( stdout,
-	         "avs [info]: Video resolution: %dx%d\n"
-	         "avs [info]: Video framerate: %d/%d\n"
-	         "avs [info]: Video framecount: %d\n",
-	         vi->width, vi->height, vi->fps_numerator, vi->fps_denominator, vi->num_frames );
+			 "avs [info]: Video resolution: %dx%d\n"
+			 "avs [info]: Video framerate: %d/%d\n"
+			 "avs [info]: Video framecount: %d\n",
+			 vi->width, vi->height, VideoInfo->i_fps_num, VideoInfo->i_fps_den, vi->num_frames );
 }
 
 void avs_cleanup()
