@@ -44,11 +44,16 @@ int main(int argc, char *argv[])
 	parse_opt(&argc, argv, cmd_options);
 	if (cmd_options->InFile == 0)
 	{
-		color_printf( "No avs script found.\n");
+		color_printf( "avs4x264 [error]: No input file found.\n");
+		return -1;
+	}
+	if (cmd_options->InFileType == 0)
+	{
+		color_printf( "avs4x264 [error]: Unsupported input file found: %s\n", cmd_options->InFile);
 		return -1;
 	}
 	if (cmd_options->Interlaced)
-		color_printf( "--interlaced found.\n");
+		color_printf( "avs4x264 [info]: Interlaced mode.\n");
 
 	video_info_t *vi = (video_info_t *) malloc(sizeof(video_info_t));
 	ZeroMemory(vi, sizeof(video_info_t));

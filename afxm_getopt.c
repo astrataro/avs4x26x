@@ -137,6 +137,8 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 					)
 				{
 					color_printf( "avs4x264 [info]: I'd recommend open %s using x264 directly, when opening %s type.\n", argv[i], extension);
+					cmd_options->InFileType = 0;
+					cmd_options->InFile = argv[i];
 					//TODO: support FFV or DSS2
 				}
 				else if(strcasecmp(extension, ".mpeg") == 0
@@ -149,6 +151,8 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 					)
 				{
 					color_printf( "avs4x264 [info]: I'd recommend index %s using corresponding DG-tools, when opening %s type.\n", argv[i], extension);
+					cmd_options->InFileType = 0;
+					cmd_options->InFile = argv[i];
 					//TODO: support FFV or DSS2
 				}
 			}
