@@ -5,7 +5,7 @@
 // (at your option) any later version.
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  8
+#define VERSION_MINOR  9
 #define VERSION_BUGFIX 0
 
 #include <stdio.h>
@@ -154,7 +154,7 @@ static AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Valu
     return res;
 }
 
-char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp, int b_tc, int i_encode_frames )
+char* generate_new_commadline(int argc, char *argv[], int b_hbpp_vfw, int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp, int b_tc, int i_encode_frames )
 {
     int i;
     char *cmd, *buf;
@@ -243,23 +243,26 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     }
     for (i=argc-1;i>0;i--)
     {
-        if( !strncmp(argv[i], "--input-depth", 13) )
+#define FIND_HBPP                                                                          \
+{                                                                                          \
+  i_width >>= 1;                                                                           \
+  fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );   \
+  break;                                                                                  \
+}
+        if( b_hbpp_vfw == 1 )
+            FIND_HBPP
+        else if( !strncmp(argv[i], "--input-depth", 13) )
         {
             if( !strcmp(argv[i], "--input-depth") )
             {
                 if( strcmp(argv[++i], "8") )
-                {
-                    i_width >>= 1;
-                    fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
-                }
+                    FIND_HBPP
             }
             else if( strcmp(argv[i], "--input-depth=8") )
-            {
-                i_width >>= 1;
-                fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
-            }
+                FIND_HBPP
             break;
         }
+#undef FIND_HBPP
     }
 
     sprintf(cmd, "\"%s\" - ", x264_binary);
@@ -292,6 +295,11 @@ char* generate_new_commadline(int argc, char *argv[], int i_frame_total, int i_f
     if ( b_add_timebase )
     {
         sprintf(buf, " --timebase %d", i_fps_den);
+        strcat(cmd, buf);
+    }
+    if ( b_hbpp_vfw )
+    {
+        sprintf(buf, " --input-depth 16");
         strcat(cmd, buf);
     }
     if ( b_add_res )
@@ -331,6 +339,7 @@ int main(int argc, char *argv[])
     int i_fps_den;
     int i_frame_start=0;
     int i_frame_total;
+    int b_hbpp_vfw=0;
     int b_interlaced=0;
     int b_qp=0;
     int b_tc=0;
@@ -557,6 +566,48 @@ int main(int argc, char *argv[])
                 {
                     fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                     break;
+                }
+            }
+
+            else if ( len>4 &&
+                      (argv[i][len-4])== '.' &&
+                      tolower(argv[i][len-3])== 'v' &&
+                      tolower(argv[i][len-2])== 'p' &&
+                      tolower(argv[i][len-1])== 'y' )
+            {
+                infile=argv[i];
+                filter = "AVISource";
+                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                }
+                else
+                {
+                    fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                    break;
+                }
+
+                // Might be high bpp csp
+                filter = "HBVFWSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                    arg = avs_new_value_string( infile );
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                        goto avs_fail;
+                    }
+                    else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                        b_hbpp_vfw = 1;
+                        break;
+                    }
                 }
             }
 
@@ -949,7 +1000,7 @@ source_dss:
             fprintf( stdout, "avs4x264 [info]: Convert \"--seek %d\" to internal frame skipping\n", i_frame_start );
         }
 
-        cmd = generate_new_commadline(argc, argv, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp, b_tc, i_encode_frames );
+        cmd = generate_new_commadline(argc, argv, b_hbpp_vfw, i_frame_total, i_fps_num, i_fps_den, i_width, i_height, infile, csp, b_tc, i_encode_frames );
         fprintf( stdout, "avs4x264 [info]: %s\n", cmd);
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
@@ -1031,6 +1082,7 @@ source_dss:
                "     .d2v: requires DGDecode.dll\n"
                "     .dga: requires DGAVCDecode.dll\n"
                "     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
+               "     .vpy: try to use AVISource -> HBVFWSource(requires HBVFWSource.dll, will force input-depth=16)\n"
                "     .avi: try to use AVISource -> FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
                "     .m2ts/.mpeg/.vob/.m2v/.mpg/.ogm/.ogv/.ts/.tp/.ps:\n"
                "           try to use FFVideoSource(demuxer=\"lavf\" and seekmode=-1) -> DSS2 -> DirectShowSource\n"
