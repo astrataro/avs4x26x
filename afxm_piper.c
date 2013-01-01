@@ -194,6 +194,12 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 		if (cmdopts->PipeMT)
 		{
 			char *bufyuv = (char *) malloc(buflength);
+			while(bufyuv == NULL)
+			{
+				color_printf( "** Out of memory, waiting for 5 seconds... **\n" );
+				Sleep(5000);
+				bufyuv = (char *) malloc(buflength);
+			}
 			char *bufpos = bufyuv;
 			for (j = 0; j < VideoInfo->i_height; j++)
 			{
