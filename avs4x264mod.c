@@ -5,7 +5,7 @@
 // (at your option) any later version.
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  8
+#define VERSION_MINOR  9
 #define VERSION_BUGFIX 0
 
 #include "avs4x264mod.h"
@@ -167,6 +167,8 @@ void showhelp(char *prog)
 		"     .d2v: requires DGDecode.dll\n"
 		"     .dga: requires DGAVCDecode.dll\n"
 		"     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
+		"     .vpy: through AVISource if input-depth is 8\n"
+		"           or HBVFWSource if input-depth > 8 (requires HBVFWSource.dll)\n"
 	);
 	printf("Options:\n");
 	printf(" -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);

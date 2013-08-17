@@ -82,6 +82,11 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 		{
 			cmd_options->QPFile = 1;
 		}
+		else if (!strcmp(argv[i], "--input-depth"))
+		{
+			cmd_options->HighBPP = atoi(argv[i + 1]);
+			i++;
+		}
 		else if (!strcmp(argv[i], "--tcfile-in"))
 		{
 			cmd_options->TCFile = 1;
@@ -107,6 +112,11 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 				if(strcasecmp(extension, ".avs") == 0)
 				{
 					cmd_options->InFileType = IFT_AVS;
+					cmd_options->InFile = argv[i];
+				}
+				else if(strcasecmp(extension, ".vpy") == 0)
+				{
+					cmd_options->InFileType = IFT_VPY;
 					cmd_options->InFile = argv[i];
 				}
 				else if(strcasecmp(extension, ".d2v") == 0)
@@ -158,6 +168,8 @@ int parse_opt(int *_argc, char **argv, cmd_t *cmd_options)
 			}
 		}
 	}
+	if(cmd_options->InFileType == IFT_VPY && cmd_options->HighBPP > 8)
+		cmd_options->InFileType = IFT_VPH;
 	*_argc = argc;
 }
 /*

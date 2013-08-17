@@ -84,6 +84,8 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 	switch(cmd_options->InFileType)
 	{
 		case IFT_AVS:	filter = "Import";		break;
+		case IFT_VPY:	filter = "AVISource";		break;
+		case IFT_VPH:	filter = "HBVFWSource";		break;
 		case IFT_D2V:	filter = "MPEG2Source";	break;
 		case IFT_DGA:	filter = "AVCSource";		break;
 		case IFT_DGI:	filter = "DGSource";		break;

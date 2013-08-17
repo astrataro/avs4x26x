@@ -120,6 +120,10 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 		sprintf(buf, " --input-csp %s", vi->csp);
 		strcat(cmd, buf);
 	}
+	if (cmdopt->InFileType == IFT_VPH)
+	{
+		strcat(cmd, " --input-depth 16"); // force 16bit input when using HBVFWSource
+	}
 	free(buf);
 	return cmd;
 }

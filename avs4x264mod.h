@@ -116,6 +116,7 @@ typedef struct
 	int TCFile;
 	int Seek;
 	int Frames;
+	int HighBPP;
 	char* X264Path;
 	char* InFile;
 	int InFileType;
@@ -139,5 +140,7 @@ typedef struct
 #define IFT_D2V 0x81
 #define IFT_DGA 0x82
 #define IFT_DGI 0x83
+#define IFT_VPY 0x84
+#define IFT_VPH 0x184
 
 #endif
