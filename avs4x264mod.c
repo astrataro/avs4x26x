@@ -6,7 +6,7 @@
 
 #define VERSION_MAJOR  0
 #define VERSION_MINOR  9
-#define VERSION_BUGFIX 0
+#define VERSION_BUGFIX 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -560,30 +560,26 @@ int main(int argc, char *argv[])
                     fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                     arg = avs_new_value_string( infile );
                     res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
-                    if( avs_is_error( res ) )
-                    {
-                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
-                    }
-                    else
+                    if( !avs_is_error( res ) )
                     {
                         fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                         break;
                     }
+                    else
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                 }
 
                 filter = "AVISource";
                 fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 arg = avs_new_value_string( infile );
                 res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
-                if( avs_is_error( res ) )
-                {
-                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
-                }
-                else
+                if( !avs_is_error( res ) )
                 {
                     fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                     break;
                 }
+                else
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
 
                 // Might be high bpp csp
                 filter = "HBVFWSource";
@@ -613,20 +609,20 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-1])== 'i' )
             {
                 infile=argv[i];
+
                 filter = "AVISource";
                 fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 arg = avs_new_value_string( infile );
                 res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
-                if( avs_is_error( res ) )
-                {
-                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
-                    goto source_ffms_general;
-                }
-                else
+                if( !avs_is_error( res ) )
                 {
                     fprintf( stdout, "avs4x264 [info]: succeeded\n" );
                     break;
                 }
+                else
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+
+                goto source_lwl_ffms_general;
             }
 
             else if ( ( len>5 && (argv[i][len-5])== '.' && (   ( tolower(argv[i][len-4])== 'm' && argv[i][len-3]== '2' && tolower(argv[i][len-2])== 't' && tolower(argv[i][len-1])== 's' )  // m2ts
@@ -648,6 +644,24 @@ int main(int argc, char *argv[])
                     )                                               /* We don't trust ffms's non-linear seeking for these formats */
             {
                 infile=argv[i];
+
+                filter = "LWLibavVideoSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                    fprintf( stdout, "avs4x264 [info]: indexing...\n" );
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_int( 1 ) };
+                    const char *arg_name[] = { "source", "threads" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
+                    if( !avs_is_error( res ) )
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                        break;
+                    }
+                    else
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                }
+
                 filter = "FFIndex";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
@@ -663,10 +677,7 @@ int main(int argc, char *argv[])
                     }
                 }
                 else
-                {
-                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto source_dss;
-                }
 
                 filter = "FFVideoSource";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
@@ -687,17 +698,45 @@ int main(int argc, char *argv[])
                     }
                 }
                 else
-                {
-                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto source_dss;
-                }
                 break;
             }
 
-            else if ( ( len>4 && (argv[i][len-4])== '.' && (   ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'k' && tolower(argv[i][len-1])== 'v' )  // mkv
-                                                            || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'p' && tolower(argv[i][len-1])== '4' )  // mp4
+            else if ( ( len>4 && (argv[i][len-4])== '.' && (   ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'p' && tolower(argv[i][len-1])== '4' )  // mp4
                                                             || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== '4' && tolower(argv[i][len-1])== 'v' )  // m4v
                                                             || ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'o' && tolower(argv[i][len-1])== 'v' )  // mov
+                                                            || ( tolower(argv[i][len-3])== '3' && tolower(argv[i][len-2])== 'g' && tolower(argv[i][len-1])== 'p' )  // 3gp
+                                                            || ( tolower(argv[i][len-3])== '3' && tolower(argv[i][len-2])== 'g' && tolower(argv[i][len-1])== '2' )  // 3g2
+                                                           )
+                      )
+                   || ( len>3 && (argv[i][len-3])== '.' && tolower(argv[i][len-2])== 'q' && tolower(argv[i][len-2])== 't' )                                         // qt
+                    )                                              /* LSMASHVideoSource works perfect for them */
+            {
+                infile=argv[i];
+                filter = "LSMASHVideoSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                    fprintf( stdout, "avs4x264 [info]: indexing...\n" );
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_int( 1 ) };
+                    const char *arg_name[] = { "source", "threads" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                        goto source_lwl_ffms_general;
+                    }
+                    else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                        break;
+                    }
+                }
+                else
+                    goto source_lwl_ffms_general;
+            }
+
+            else if ( ( len>4 && (argv[i][len-4])== '.' && (   ( tolower(argv[i][len-3])== 'm' && tolower(argv[i][len-2])== 'k' && tolower(argv[i][len-1])== 'v' )  // mkv
                                                             || ( tolower(argv[i][len-3])== 'f' && tolower(argv[i][len-2])== 'l' && tolower(argv[i][len-1])== 'v' )  // flv
                                                            )
                       )
@@ -705,7 +744,25 @@ int main(int argc, char *argv[])
                     )                                              /* Non-linear seeking seems to be reliable for these formats */
             {
                 infile=argv[i];
-source_ffms_general:
+source_lwl_ffms_general:
+
+                filter = "LWLibavVideoSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                    fprintf( stdout, "avs4x264 [info]: indexing...\n" );
+                    AVS_Value arg_arr[] = { avs_new_value_string( infile ), avs_new_value_int( 1 ) };
+                    const char *arg_name[] = { "source", "threads" };
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, avs_new_value_array( arg_arr, 2 ), arg_name );
+                    if( !avs_is_error( res ) )
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                        break;
+                    }
+                    else
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                }
+
                 filter = "FFVideoSource";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
@@ -719,14 +776,13 @@ source_ffms_general:
                         fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
                         goto source_dss;
                     }
-                    fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                    else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                        break;
+                    }
                 }
-                else
-                {
-                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
                     goto source_dss;
-                }
-                break;
             }
 
             else if ( ( len>5 && (argv[i][len-5])== '.' && (   ( tolower(argv[i][len-4])== 'r' && argv[i][len-3]== 'm' && tolower(argv[i][len-2])== 'v' && tolower(argv[i][len-1])== 'b' )  // rmvb
@@ -762,8 +818,6 @@ source_dss:
                         break;
                     }
                 }
-                else
-                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
 
                 filter = "DirectShowSource";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
@@ -782,10 +836,7 @@ source_dss:
                         break;
                     }
                 }
-                else
-                {
-                    fprintf( stderr, "avs4x264 [error]: \"%s\" not found\n", filter );
-                }
+
                 goto avs_fail;
                 break;
             }
@@ -1102,12 +1153,19 @@ source_dss:
                "     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
                "     .vpy: try to use VSImport -> AVISource -> HBVFWSource\n"
                "           (HBVFWSource requires HBVFWSource.dll, and will force input-depth=16)\n"
-               "     .avi: try to use AVISource -> FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
+               "     .avi: try to use AVISource -> LWLibavVideoSource -> FFVideoSource(normal)\n"
+               "                      -> DSS2 -> DirectShowSource\n"
+               "     .mp4/.m4v/.mov/.3gp/.3g2/.qt:\n"
+               "           try to use LSMASHVideoSource -> LWLibavVideoSource\n"
+               "                      -> FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
                "     .m2ts/.mpeg/.vob/.m2v/.mpg/.ogm/.ogv/.ts/.tp/.ps:\n"
-               "           try to use FFVideoSource(demuxer=\"lavf\" and seekmode=-1) -> DSS2 -> DirectShowSource\n"
-               "           seek-mode will be forced to \"safe\" for these formats\n"
-               "     .mkv/.mp4/.m4v/.mov/.flv/.webm:\n"
-               "           try to use FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
+               "           try to use LWLibavVideoSource\n"
+               "                      -> FFVideoSource(demuxer=\"lavf\" and seekmode=-1)\n"
+               "                      -> DSS2 -> DirectShowSource\n"
+               "           seek-mode will be forced to \"safe\" for these formats if ffms is used\n"
+               "     .mkv/.flv/.webm:\n"
+               "           try to use LWLibavVideoSource -> FFVideoSource(normal) -> DSS2\n"
+               "                      -> DirectShowSource\n"
                "     .rmvb/.divx/.wmv/.wmp/.asf/.rm/.wm:\n"
                "           try to use DSS2 -> DirectShowSource\n"
                "\n");
