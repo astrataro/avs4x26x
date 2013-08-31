@@ -548,34 +548,29 @@ int main(int argc, char *argv[])
 
             else if ( len>4 &&
                       (argv[i][len-4])== '.' &&
-                      tolower(argv[i][len-3])== 'a' &&
-                      tolower(argv[i][len-2])== 'v' &&
-                      tolower(argv[i][len-1])== 'i' )
-            {
-                infile=argv[i];
-                filter = "AVISource";
-                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
-                arg = avs_new_value_string( infile );
-                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
-                if( avs_is_error( res ) )
-                {
-                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
-                    goto source_ffms_general;
-                }
-                else
-                {
-                    fprintf( stdout, "avs4x264 [info]: succeeded\n" );
-                    break;
-                }
-            }
-
-            else if ( len>4 &&
-                      (argv[i][len-4])== '.' &&
                       tolower(argv[i][len-3])== 'v' &&
                       tolower(argv[i][len-2])== 'p' &&
                       tolower(argv[i][len-1])== 'y' )
             {
                 infile=argv[i];
+
+                filter = "VSImport";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                    arg = avs_new_value_string( infile );
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                    if( avs_is_error( res ) )
+                    {
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    }
+                    else
+                    {
+                        fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                        break;
+                    }
+                }
+
                 filter = "AVISource";
                 fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
                 arg = avs_new_value_string( infile );
@@ -608,6 +603,29 @@ int main(int argc, char *argv[])
                         b_hbpp_vfw = 1;
                         break;
                     }
+                }
+            }
+
+            else if ( len>4 &&
+                      (argv[i][len-4])== '.' &&
+                      tolower(argv[i][len-3])== 'a' &&
+                      tolower(argv[i][len-2])== 'v' &&
+                      tolower(argv[i][len-1])== 'i' )
+            {
+                infile=argv[i];
+                filter = "AVISource";
+                fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
+                arg = avs_new_value_string( infile );
+                res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                if( avs_is_error( res ) )
+                {
+                    fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                    goto source_ffms_general;
+                }
+                else
+                {
+                    fprintf( stdout, "avs4x264 [info]: succeeded\n" );
+                    break;
                 }
             }
 
@@ -1082,7 +1100,8 @@ source_dss:
                "     .d2v: requires DGDecode.dll\n"
                "     .dga: requires DGAVCDecode.dll\n"
                "     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
-               "     .vpy: try to use AVISource -> HBVFWSource(requires HBVFWSource.dll, will force input-depth=16)\n"
+               "     .vpy: try to use VSImport -> AVISource -> HBVFWSource\n"
+               "           (HBVFWSource requires HBVFWSource.dll, and will force input-depth=16)\n"
                "     .avi: try to use AVISource -> FFVideoSource(normal) -> DSS2 -> DirectShowSource\n"
                "     .m2ts/.mpeg/.vob/.m2v/.mpg/.ogm/.ogv/.ts/.tp/.ps:\n"
                "           try to use FFVideoSource(demuxer=\"lavf\" and seekmode=-1) -> DSS2 -> DirectShowSource\n"
