@@ -5,8 +5,8 @@
 // (at your option) any later version.
 
 #define VERSION_MAJOR  0
-#define VERSION_MINOR  9
-#define VERSION_BUGFIX 1
+#define VERSION_MINOR  10
+#define VERSION_BUGFIX 0
 
 #include <stdio.h>
 #include <stdlib.h>
