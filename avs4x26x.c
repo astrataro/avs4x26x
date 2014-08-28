@@ -550,6 +550,21 @@ int main(int argc, char *argv[])
                 AUTO_LOAD_PLUGINS
                 infile=argv[i];
                 filter = "DGSource";
+                if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
+                {
+                    fprintf( stdout, "avs4x26x [info]: trying \"%s\"\n", filter );
+                    arg = avs_new_value_string( infile );
+                    res = avs_h.func.avs_invoke( avs_h.env, filter, arg, NULL );
+                    if( !avs_is_error( res ) )
+                    {
+                        fprintf( stdout, "avs4x26x [info]: succeeded\n" );
+                        break;
+                    }
+                    else
+                        fprintf( stderr, "avs [error]: %s\n", avs_as_string( res ) );
+                }
+
+                filter = "DGSourceIM";
                 fprintf( stdout, "avs4x26x [info]: trying \"%s\"\n", filter );
                 if( !avs_h.func.avs_function_exists( avs_h.env, filter ) )
                 {
@@ -1201,7 +1216,7 @@ source_dss:
                "     .avs\n"
                "     .d2v: requires DGDecode.dll\n"
                "     .dga: requires DGAVCDecode.dll\n"
-               "     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
+               "     .dgi: requires DGAVCDecodeDI.dll, DGDecodeNV.dll or DGDecodeIM.dll according to dgi file\n"
                "     .vpy: try to use VSImport -> AVISource -> HBVFWSource\n"
                "           (VSImport requires VapourSource.dll)\n"
                "           (HBVFWSource requires HBVFWSource.dll, and will force input-depth=16)\n"
