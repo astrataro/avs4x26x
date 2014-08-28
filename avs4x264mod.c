@@ -1170,6 +1170,7 @@ source_dss:
                "     .dga: requires DGAVCDecode.dll\n"
                "     .dgi: requires DGAVCDecodeDI.dll or DGDecodeNV.dll according to dgi file\n"
                "     .vpy: try to use VSImport -> AVISource -> HBVFWSource\n"
+               "           (VSImport requires VapourSource.dll)\n"
                "           (HBVFWSource requires HBVFWSource.dll, and will force input-depth=16)\n"
                "     .avi: try to use AVISource -> LWLibavVideoSource -> FFVideoSource(normal)\n"
                "                      -> DSS2 -> DirectShowSource\n"
@@ -1186,6 +1187,8 @@ source_dss:
                "                      -> DirectShowSource\n"
                "     .rmvb/.divx/.wmv/.wmp/.asf/.rm/.wm:\n"
                "           try to use DSS2 -> DirectShowSource\n"
+               "     (FFVideoSource, LWLibavVideoSource, LSMASHVideoSource, DSS2, DirectShowSource\n"
+               "           requires ffms2.dll, LSMASHSource.dll, avss.dll, DirectShowSource.dll)\n"
                "\n");
         printf("Options:\n"
                " -L, --x264-binary <file>   User defined x264 binary path. [Default=\"%s\"]\n", DEFAULT_BINARY_PATH);
