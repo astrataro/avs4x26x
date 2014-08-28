@@ -154,6 +154,15 @@ static AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Valu
     return res;
 }
 
+#define AUTO_LOAD_PLUGINS \
+/* AviSynth+ need explicit invoke of AutoloadPlugins() for registering plugins functions */             \
+if( avs_h.func.avs_function_exists( avs_h.env, "AutoloadPlugins" ) )                                    \
+{                                                                                                       \
+    res = avs_h.func.avs_invoke( avs_h.env, "AutoloadPlugins", avs_new_value_array( NULL, 0 ), NULL );  \
+    if( avs_is_error( res ) )                                                                           \
+        fprintf( stderr, "AutoloadPlugins failed: %s\n", avs_as_string( res ) );                        \
+}
+
 char* generate_new_commadline(int argc, char *argv[], int b_hbpp_vfw, int i_frame_total, int i_fps_num, int i_fps_den, int i_width, int i_height, char* infile, const char* csp, int b_tc, int i_encode_frames )
 {
     int i;
@@ -477,6 +486,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-2])== '2' &&
                       tolower(argv[i][len-1])== 'v' )
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
                 filter = "MPEG2Source";
                 fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
@@ -502,6 +512,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-2])== 'g' &&
                       tolower(argv[i][len-1])== 'a' )
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
                 filter = "AVCSource";
                 fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
@@ -527,6 +538,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-2])== 'g' &&
                       tolower(argv[i][len-1])== 'i' )
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
                 filter = "DGSource";
                 fprintf( stdout, "avs4x264 [info]: trying \"%s\"\n", filter );
@@ -552,6 +564,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-2])== 'p' &&
                       tolower(argv[i][len-1])== 'y' )
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
 
                 filter = "VSImport";
@@ -608,6 +621,7 @@ int main(int argc, char *argv[])
                       tolower(argv[i][len-2])== 'v' &&
                       tolower(argv[i][len-1])== 'i' )
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
 
                 filter = "AVISource";
@@ -643,6 +657,7 @@ int main(int argc, char *argv[])
                       )
                     )                                               /* We don't trust ffms's non-linear seeking for these formats */
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
 
                 filter = "LWLibavVideoSource";
@@ -712,6 +727,7 @@ int main(int argc, char *argv[])
                    || ( len>3 && (argv[i][len-3])== '.' && tolower(argv[i][len-2])== 'q' && tolower(argv[i][len-2])== 't' )                                         // qt
                     )                                              /* LSMASHVideoSource works perfect for them */
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
                 filter = "LSMASHVideoSource";
                 if( avs_h.func.avs_function_exists( avs_h.env, filter ) )
@@ -743,6 +759,7 @@ int main(int argc, char *argv[])
                    || ( len>5 && (argv[i][len-5])== '.' && tolower(argv[i][len-4])== 'w' && tolower(argv[i][len-3])== 'e' && tolower(argv[i][len-2])== 'b' && tolower(argv[i][len-1])== 'm' )  // webm
                     )                                              /* Non-linear seeking seems to be reliable for these formats */
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
 source_lwl_ffms_general:
 
@@ -800,6 +817,7 @@ source_lwl_ffms_general:
                       )
                     )                                              /* Only use DSS2/DirectShowSource for these formats */
             {
+                AUTO_LOAD_PLUGINS
                 infile=argv[i];
 source_dss:
                 filter = "DSS2";
