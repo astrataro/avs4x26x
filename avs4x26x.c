@@ -336,7 +336,7 @@ char* generate_new_commadline(int argc, char *argv[], int b_hbpp_vfw, int i_fram
 int main(int argc, char *argv[])
 {
     //avs related
-    avs_hnd_t avs_h;
+    avs_hnd_t avs_h = {0};
     AVS_Value arg;
     AVS_Value res;
     char *filter = NULL;
@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
     const char *avs_version_string;
     AVS_VideoFrame *frm;
     //createprocess related
-    HANDLE h_process, h_stdOut, h_stdErr, h_pipeRead, h_pipeWrite;
+    HANDLE /*h_process, */ h_stdOut, h_stdErr, h_pipeRead, h_pipeWrite;
     SECURITY_ATTRIBUTES saAttr;
     STARTUPINFO si_info;
     PROCESS_INFORMATION pi_info;
@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
     /*Video Info End*/
     char *planeY, *planeU, *planeV;
     unsigned int frame,len,chroma_height,chroma_width;
-    int i,j,input_arg_index;
+    int i,j;
     char *cmd;
     char *infile = NULL, *outfile = NULL;
     const char *csp = NULL;
@@ -890,8 +890,6 @@ source_dss:
             fprintf( stderr, "avs4x26x [error]: No supported input file found.\n");
             goto avs_fail;
         }
-        else    /* found input file, set index */
-            input_arg_index = i;
 
         for (i=1;i<argc;i++)
         {
@@ -1057,7 +1055,7 @@ source_dss:
                  i_width, i_height, i_fps_num, i_fps_den, i_frame_total );
 
         //execute the commandline
-        h_process = GetCurrentProcess();
+        //h_process = GetCurrentProcess();
         h_stdOut = GetStdHandle(STD_OUTPUT_HANDLE);
         h_stdErr = GetStdHandle(STD_ERROR_HANDLE);
 
