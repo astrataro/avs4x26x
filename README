@@ -1,44 +1,66 @@
-Modified avs4x264
+avs4x26x - Modified avs4x264
 
 The code is based on on AVS-input
 from x264 (http://www.videolan.org/developers/x264.html).
 
 You can use this software to encode videos using the 32-bit version
-of Avisynth with the 64-bit version of x264 under Windows.
-The x264 executable needs to be named x264_64.exe and placed in the
-same folder as this program. Otherwise use --x264-binary "x264_path"
-or -L "x264_path" to define the pach of x264 binary.
+of Avisynth with the 64-bit version of x264 or x265 under Windows.
+The x26x executable needs to be named x264_64.exe or x265 and placed
+in the same folder as this program. Otherwise you need --x26x-binary
+"x26x_path" or -L "x26x_path" to define the pach of x26x binary.
 Example:
-avs4x264mod.exe --x264-binary "C:\x264_64-abc.exe" -o out.264 in.avs
+avs4x26x.exe --x26x-binary "C:\x264-abc.exe" -o out.264 in.avs
 
-avs4x264mod v0.6:
+avs4x26x v0.10:
 Modified by 06_taro ( astrataro@gmail.com ).
 Modifications: 
--- When x264's parameter "input-depth" is set and is not equal to 8, 
+-- When x26x's parameter "input-depth" is set and is not equal to 8,
    divide "width" by 2. This makes faked 16-bit avs output, i.e.,
-   MSB and LSB field interleaved clip, be treated correctly by x264.
-   If "input-depth" is not defined or equals to 8, avs4x264mod acts
+   MSB and LSB field interleaved clip, be treated correctly by x26x.
+   If "input-depth" is not defined or equals to 8, avs4x26x acts
    in the same way as original avs4x264.
-   Example:
-   avs4x264mod.exe --input-depth 16 "C:\x264.exe" -out o.264 in.avs
--- Print full command-line piped out to x264_64.exe to screen,
-   prefixed by "avs4x264 [info]:".
--- Make x264_64.exe path changeable. The path of x264 binary can be
-   set by --x264-binary "x264_path" or -L "x264_path".
-   Use "x264_64" by default if
-   --x264-binary is not set.
-   Example:
-   avs4x264mod.exe --x264-binary "C:\x264.exe" -o out.264 in.avs
-   avs4x264mod.exe -L "C:\x264.exe" -o out.264 in.avs
+-- Print full command-line piped to x26x.exe to screen, prefixed
+   by "avs4x26x [info]:".
+-- Make x264_64.exe path changeable. The path of x26x binary can be
+   set by --x26x-binary "x26x_path" or -L "x26x_path". If custom path
+   is not set, default path "x264_64.exe" will be used in normal case,
+   while if output file extension is *.265/.h265/.hevc, "x265" will be
+   launched.
 -- Directly output i422/i444 with AviSynth 2.6 csp YV16/YV24.
--- Improve capability with more styles of parameters in x264.
+-- Show help info when running with no options.
+-- Improve capability with more styles of parameters in x26x.
    E.g., --tcfile-in="timecode.txt", --input-depth=16,
-         --x264-binary="x264", -L=x264 and -Lx264.
--- Do not add --input-res/--fps/--frames if already defined.
+         --x26x-binary="x264", -L=x264 and -Lx265.
+-- Do not add --input-res/--fps/--frames/--input-csp if already defined.
 -- Correct number of frames to be handled when --frames is defined.
+-- Add "--seek-mode" to decide use "fast" seek mode or "safe" seek
+   mode when has "--seek". Default is "fast".
+   -- "fast" mode is similar to x26x's internal method of avs demuxer:
+      skip frames until the frame --seek indicates. However, when used
+      with --qpfile/--tcfile-in, it won't skip but add a "FreezeFrame(0,
+      seek, seek)" to avs script to actually skip the process of those
+      frames. I have to play this trick because x26x regards qpfile or
+      tcfile-in as qpfiles or timecodes of input files, not output files,
+      so the frame numbers of input piped raw ( can be linearly seeked
+      only in x26x ) has to be left untouched.
+   -- "safe" mode uses a safer but slower method: delivering every
+      untouched frame to x26x. When the process of frames before "--seek"
+      frame is heavy, the "useless" running time of processing those
+      frames will be much longer than "fast" mode, but the result is
+      safer for scripts like TDecimate(mode=3), which can only be seeked
+      in a linear way.
+-- Add "--timebase" when using "--tcfile-in".
+-- Correct framerate to proper NTSC fraction if applicable.
+-- Support direct .d2v/.dga/.dgi input, plus .vpy input with either
+   VapourSource(VSImport) or vfw interface(AVISource/HBVFWSource), and
+   some media file input such as .avi/.mkv/.mp4/.m2ts/etc.
+-- Support AviSynth+.
+-- Support x262/x265.
+   However, the x265 style "x265 <infile> <outfile>" is not supported
+   and probably never will. You need to use -o or --output before outfile.
 
 Compiling:
-with gcc 4.6.x:
-gcc avs4x264mod.c -s -Ofast -oavs4x264mod -Wl,--large-address-aware
+with gcc 4.6.0+:
+gcc avs4x26x.c -s -Ofast -oavs4x26x -Wl,--large-address-aware
 with old versions:
-gcc avs4x264mod.c -s -O3 -ffast-math -oavs4x264mod -Wl,--large-address-aware
+gcc avs4x26x.c -s -O3 -ffast-math -oavs4x26x -Wl,--large-address-aware
