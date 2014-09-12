@@ -371,6 +371,8 @@ int main(int argc, char *argv[])
     char *cmd;
     char *infile = NULL, *outfile = NULL;
     const char *csp = NULL;
+	int error;
+	
     if (argc>1)
     {
         //get the script file and other informations from the commandline
@@ -1137,7 +1139,13 @@ source_dss:
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
         {
-            fprintf( stderr, "Error: Failed to create process <%d>!", (int)GetLastError());
+			error = (int)GetLastError();
+			if (error == 2)
+			{
+				fprintf(stderr, "Unable to find x26x binary!");
+			}
+			
+            fprintf( stderr, "Error: Failed to create process <%d>!", error);
             free(cmd);
             goto pipe_fail;
         }
