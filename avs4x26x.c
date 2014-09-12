@@ -1137,7 +1137,11 @@ source_dss:
 
         if (!CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si_info, &pi_info))
         {
-            fprintf( stderr, "Error: Failed to create process <%d>!", (int)GetLastError());
+            int error = (int)GetLastError();
+            fprintf( stderr, "Error: Failed to create process <%d>!", error);
+            if (error == 2)
+                fprintf(stderr, "Unable to find x26x binary!");
+
             free(cmd);
             goto pipe_fail;
         }
