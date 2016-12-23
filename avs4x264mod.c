@@ -72,16 +72,18 @@ int main(int argc, char *argv[])
 			strcat(x264cmd_options->extra, str);
 		}
 	}
+	// avs open
+	result = LoadAVSFile(vi, cmd_options);
 
-	// change affinity before open avs file: much faster on multicore cpu
+	// change affinity after opening avs file:
+	//   there are filters that does not support single core affinity;
+	//   set affinity on parent process to achieve same functionality.
 	if(cmd_options->Affinity)
 	{
 		color_printf( "avs4x264 [info]: My CPU affinity set to %d\n", cmd_options->Affinity);
 		SetProcessAffinityMask(GetCurrentProcess(), cmd_options->Affinity);
 	}
 
-	// avs open
-	result = LoadAVSFile(vi, cmd_options);
 	if (result == ERR_AVS_NOTFOUND)
 		return -1;
 	if (result == ERR_AVS_FAIL)
