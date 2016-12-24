@@ -117,18 +117,6 @@ int CreateX264Process(char *cmd, cmd_t *cmdopts, video_info_t *VideoInfo, pipe_i
 
 	//cleanup before writing to pipe
 	CloseHandle(PipeInfo->h_pipeRead);
-	/*
-	if(cmdopts->Affinity)
-	{
-		fprintf( stderr, "avs4x264 [info]: My CPU affinity set to %d\n", cmdopts->Affinity);
-		SetProcessAffinityMask(GetCurrentProcess(), cmdopts->Affinity);
-	}
-	*/
-	if (cmdopts->x264Affinity)
-	{
-		color_printf( "avs4x264 [info]: x264 CPU affinity set to %d\n", cmdopts->x264Affinity);
-		SetProcessAffinityMask(PipeInfo->pi_info.hProcess, cmdopts->x264Affinity);
-	}
 
 	if (cmdopts->PipeMT)
 	{
@@ -170,6 +158,8 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 		color_printf( "avs4x264 [info]: Buffer size set to %dx%d\n", OBuffer.capacity, OBuffer.framesize);
 		fflush(stderr);
 	}
+
+	int affinity_set = 0;
 
 	//write
 	for ( frame = VideoInfo->i_frame_start; frame < VideoInfo->i_frame_total; frame++ )
@@ -253,6 +243,15 @@ int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *
 			}
 		}
 		avs_h.func.avs_release_video_frame( frm );
+
+		// x265 now uses a different way to set affinity,
+		// this makes sure we do overwrite x265's setting.
+		if (!affinity_set && cmdopts->x264Affinity)
+		{
+			color_printf( "avs4x264 [info]: x264 CPU affinity set to %d\n", cmdopts->x264Affinity);
+			SetProcessAffinityMask(PipeInfo->pi_info.hProcess, cmdopts->x264Affinity);
+			affinity_set = 1;
+		}
 	}
 }
 
