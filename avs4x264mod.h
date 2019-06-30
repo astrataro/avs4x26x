@@ -6,6 +6,9 @@
 #include <windows.h>
 #include <string.h>
 #include <ctype.h>
+#include <process.h>
+#include <sys/time.h>
+#include <unistd.h>
 //#include <math.h>
 
 /* the AVS interface currently uses __declspec to link function declarations to their definitions in the dll.
@@ -73,6 +76,7 @@ typedef struct
 	int i_encode_frames;
 	int real_width;
 	int num_frames;
+	int bpc;
 	char* csp;
 	unsigned int chroma_height, chroma_width;
 } video_info_t;
@@ -142,5 +146,14 @@ typedef struct
 #define IFT_DGI 0x83
 #define IFT_VPY 0x84
 #define IFT_VPH 0x184
+
+int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options);
+void avs_cleanup();
+int color_printf(char *fmt, ...);
+int title_printf(char *fmt, ...);
+char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *vi);
+int parse_opt(int *_argc, char **argv, cmd_t *cmd_options);
+int CreateX264Process(char *cmd, cmd_t *cmdopts, video_info_t *VideoInfo, pipe_info_t *PipeInfo);
+int WritePipeLoop(int Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *VideoInfo, pipe_info_t *PipeInfo);
 
 #endif

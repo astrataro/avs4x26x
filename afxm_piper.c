@@ -125,7 +125,7 @@ int CreateX264Process(char *cmd, cmd_t *cmdopts, video_info_t *VideoInfo, pipe_i
 	}
 }
 
-int WritePipeLoop(int *Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *VideoInfo, pipe_info_t *PipeInfo)
+int WritePipeLoop(int Func(HANDLE, char *, int), cmd_t *cmdopts, video_info_t *VideoInfo, pipe_info_t *PipeInfo)
 {
 	unsigned int frame, h_half, w_half;
 	AVS_VideoFrame *frm;

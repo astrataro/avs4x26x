@@ -62,6 +62,13 @@ AVS_Value update_clip( avs_hnd_t avs_h, const AVS_VideoInfo *vi, AVS_Value res, 
 	return res;
 }
 
+int bits_per_component(const AVS_VideoInfo* vi) {
+    if (vi->pixel_type == AVS_CS_YUY2)       return 8;
+    else if (vi->pixel_type == AVS_CS_RAW32) return 32;
+    const int componentBitSizes[8] = {8,16,32,0,0,10,12,14};
+    return componentBitSizes[(vi->pixel_type >> AVS_CS_SHIFT_SAMPLE_BITS) & 7];
+}
+
 int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 {
 	// float avs_version;
@@ -145,21 +152,24 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 				 vi->width, vi->height );
 		return ERR_AVS_FAIL;
 	}
-	if ( avs_is_yv12( vi ) )
+	int pixel_type = vi->pixel_type;
+	if (pixel_type == AVS_CS_I420)
+		pixel_type = AVS_CS_YV12;
+	if ( (pixel_type & AVS_CS_GENERIC_YUV420) == AVS_CS_GENERIC_YUV420 )
 	{
 		VideoInfo->csp = "i420";
 		VideoInfo->chroma_width = vi->width >> 1;
 		VideoInfo->chroma_height = vi->height >> 1;
 		fprintf( stdout, "avs [info]: Video colorspace: YV12\n" );
 	}
-	else if ( avs_is_yv24( vi ) )
+	else if ( (pixel_type & AVS_CS_GENERIC_YUV444) == AVS_CS_GENERIC_YUV444 )
 	{
 		VideoInfo->csp = "i444";
 		VideoInfo->chroma_width = vi->width;
 		VideoInfo->chroma_height = vi->height;
 		fprintf( stdout, "avs [info]: Video colorspace: YV24\n" );
 	}
-	else if ( avs_is_yv16( vi ) )
+	else if ( (pixel_type & AVS_CS_GENERIC_YUV422) == AVS_CS_GENERIC_YUV422 )
 	{
 		VideoInfo->csp = "i422";
 		VideoInfo->chroma_width = vi->width >> 1;
@@ -204,6 +214,12 @@ int LoadAVSFile(video_info_t *VideoInfo, cmd_t *cmd_options)
 	VideoInfo->i_fps_den = vi->fps_denominator;
 	VideoInfo->i_frame_total = vi->num_frames;
 	VideoInfo->num_frames = vi->num_frames;
+	VideoInfo->bpc = bits_per_component(vi);
+	if( VideoInfo->bpc > 8 ) {
+		fprintf( stdout, "avs [info]: Video depth: %d\n", VideoInfo->bpc );
+		VideoInfo->i_width <<= 1;
+		VideoInfo->chroma_width <<= 1;
+	}
 
 	if( VideoInfo->i_fps_den != 1 )
 	{

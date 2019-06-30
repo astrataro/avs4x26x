@@ -7,6 +7,7 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 	int b_add_fps      = 1;
 	int b_add_csp      = 1;
 	int b_add_res      = 1;
+	int b_add_depth    = 1;
 	int b_add_timebase = 0;
 	char *x264_binary;
 	x264_binary = DEFAULT_BINARY_PATH;
@@ -60,15 +61,16 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 	{
 		if ( !strncmp(xcmdopt->argv[i], "--input-depth", 13) )
 		{
+			b_add_depth = 0;
 			if ( !strcmp(xcmdopt->argv[i], "--input-depth") )
 			{
-				if ( strcmp(xcmdopt->argv[++i], "8") )
+				if ( strcmp(xcmdopt->argv[++i], "8") && vi->bpc == 8 )
 				{
 					vi->real_width >>= 1;
 					fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
 				}
 			}
-			else if ( strcmp(xcmdopt->argv[i], "--input-depth=8") )
+			else if ( strcmp(xcmdopt->argv[i], "--input-depth=8") && vi->bpc == 8 )
 			{
 				vi->real_width >>= 1;
 				fprintf( stdout, "avs4x264 [info]: High bit depth detected, resolution corrected\n" );
@@ -118,6 +120,11 @@ char * x264_generate_command(cmd_t *cmdopt, x264_cmd_t *xcmdopt, video_info_t *v
 	if ( b_add_csp )
 	{
 		sprintf(buf, " --input-csp %s", vi->csp);
+		strcat(cmd, buf);
+	}
+	if ( b_add_depth )
+	{
+		sprintf(buf, " --input-depth %d", vi->bpc);
 		strcat(cmd, buf);
 	}
 	if (cmdopt->InFileType == IFT_VPH)
